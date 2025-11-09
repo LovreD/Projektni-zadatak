@@ -1,24 +1,50 @@
 {% extends "base.html" %}
 
+{% block title %}Usluge - Frizerski salon{% endblock %}
+
 {% block content %}
-  <h1 class="mb-4">Usluge frizerskog salona</h1>
+<div class="container py-5">
+  <h1 class="mb-4 text-center">Odaberite frizera i uslugu</h1>
 
-  <h5 class="mt-3">Frizeri</h5>
-  <ul>
-    <li>Marija</li>
-    <li>Lovre</li>
-    <li>Gabrijel</li>
-    <li>Ivan</li>
-  </ul>
+  <form>
+    <!-- Odabir frizera -->
+    <div class="mb-4">
+      <label for="frizer" class="form-label">Frizer:</label>
+      <select id="frizer" name="frizer" class="form-select" required>
+        <option value="">-- Odaberite frizera --</option>
+        <option value="Marija">Marija</option>
+        <option value="Lovre">Lovre</option>
+        <option value="Gabrijel">Gabrijel</option>
+        <option value="Ivan">Ivan</option>
+      </select>
+    </div>
 
-  <h5 class="mt-4">Tretmani</h5>
-  <ul>
-    <li>Klasično šišanje — 20 min — 12 €</li>
-    <li>Fade šišanje — 20 min — 15 €</li>
-    <li>Buzz cut — 15 min — 10 €</li>
-    <li>Pranje kose (dodatno) — +2 €</li>
-    <li>Šišanje duge kose — 30 min — 20 €</li>
-  </ul>
+    <!-- Odabir usluge -->
+    <div class="mb-4">
+      <label for="usluga" class="form-label">Usluga:</label>
+      <select id="usluga" name="usluga" class="form-select" required>
+        <option value="">-- Odaberite uslugu --</option>
+        <option value="Klasično šišanje">Klasično šišanje (20 min - 12 €)</option>
+        <option value="Fade šišanje">Fade šišanje (20 min - 15 €)</option>
+        <option value="Buzz cut">Buzz cut (15 min - 10 €)</option>
+        <option value="Pranje kose">Pranje kose (dodatno +2 €)</option>
+        <option value="Šišanje duge kose">Šišanje duge kose (30 min - 20 €)</option>
+      </select>
+    </div>
 
-  <p class="mt-4"><a href="{{ url_for('main.index') }}">← Povratak na početnu</a></p>
+    <!-- Odabir termina -->
+    <div class="mb-4">
+      <label for="termin" class="form-label">Termin:</label>
+      <select id="termin" name="termin" class="form-select" required>
+        <option value="">-- Odaberite termin --</option>
+        {% for sat in range(9, 17) %}
+        <option value="{{ sat }}:00">{{ sat }}:00</option>
+        <option value="{{ sat }}:30">{{ sat }}:30</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <button type="submit" class="btn btn-primary w-100">Rezerviraj</button>
+  </form>
+</div>
 {% endblock %}
