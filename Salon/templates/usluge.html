@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h1 class="mb-4">Usluge frizerskog salona</h1>
+
+  <h5 class="mt-3">Frizeri</h5>
+  <ul>
+    <li>Marija</li>
+    <li>Lovre</li>
+    <li>Gabrijel</li>
+    <li>Ivan</li>
+  </ul>
+
+  <h5 class="mt-4">Tretmani</h5>
+  <ul>
+    <li>Klasično šišanje — 20 min — 12 €</li>
+    <li>Fade šišanje — 20 min — 15 €</li>
+    <li>Buzz cut — 15 min — 10 €</li>
+    <li>Pranje kose (dodatno) — +2 €</li>
+    <li>Šišanje duge kose — 30 min — 20 €</li>
+  </ul>
+
+  <p class="mt-4"><a href="{{ url_for('main.index') }}">← Povratak na početnu</a></p>
+{% endblock %}
