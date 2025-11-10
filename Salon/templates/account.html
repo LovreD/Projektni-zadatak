@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Korisnički račun{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Korisnički račun</h1>
+
+{% if user %}
+<div class="row g-4">
+  <!-- Profilna slika i kratke akcije -->
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-body text-center">
+        {% if user.photo_id %}
+          <img src="{{ url_for('main.photo', id=user.photo_id) }}"
+               class="img-fluid rounded mb-3"
+               alt="Profilna slika">
+        {% else %}
+          <div class="bg-light rounded p-5 text-muted">Nema slike</div>
+        {% endif %}
+        <div class="mt-3 d-grid gap-2">
+          <a href="{{ url_for('main.moja_sisanja') }}" class="btn btn-outline-primary btn-sm">
+            Moja šišanja
+          </a>
+          <a href="{{ url_for('main.logout') }}" class="btn btn-outline-secondary btn-sm">
+            Odjava
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Forma za uređivanje profila -->
+  <div class="col-md-8">
+    <form method="POST" enctype="multipart/form-data" class="card card-body">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Ime i prezime</label>
+          <input type="text" name="full_name" class="form-control"
+                 value="{{ user.full_name or user.name or '' }}" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">E-mail</label>
+          <input type="email" name="email" class="form-control"
+                 value="{{ user.email or '' }}" required>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Broj mobitela</label>
+          <input type="text" name="phone" class="form-control"
+                 value="{{ user.phone or '' }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Profilna slika</label>
+          <input type="file" name="photo" class="form-control" accept="image/*">
+        </div>
+        <div class="col-12">
+          <button class="btn btn-primary">Spremi promjene</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% else %}
+  <div class="alert alert-info">Prijavite se za pristup profilu.</div>
+{% endif %}
+{% endblock %}
