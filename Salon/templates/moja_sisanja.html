@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Moja šišanja{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Moja šišanja</h1>
+
+{% if not items %}
+  <p>Trenutno nemaš nijednu rezervaciju.</p>
+{% else %}
+  <div class="list-group">
+    {% for r in items %}
+      <div class="list-group-item mb-3">
+        <h5 class="mb-1">{{ r.frizer }}</h5>
+
+        <p class="mb-1">
+          <strong>Usluge:</strong>
+          {% for s in r.services %}
+            {{ s }}{% if not loop.last %}, {% endif %}
+          {% endfor %}
+        </p>
+
+        <p class="mb-1">
+          <strong>Datum:</strong> {{ r.datum }}<br>
+          <strong>Termin:</strong> {{ r.termin }}
+        </p>
+
+        {% if r.created_at %}
+        <small class="text-muted">Rezervirano: {{ r.created_at.strftime("%d.%m.%Y %H:%M") }}</small>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+{% endblock %}
+
