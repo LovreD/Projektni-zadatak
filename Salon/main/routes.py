@@ -31,33 +31,38 @@ def generate_timeslots():
 @bp.route("/usluge", methods=["GET", "POST"])
 def usluge():
     if request.method == "POST":
-        # Čitanje iz forme
+        # --- ČITANJE IZ FORME ---
         barber = (request.form.get("frizer") or "").strip()
-        selected_services = request.form.getlist("usluge")   # više checkboxa
+        selected_services = request.form.getlist("usluge")
         day = request.form.get("datum") or ""
         slot = request.form.get("termin") or ""
 
-        # Jednostavna validacija
+        # --- VALIDACIJA ---
         if not barber or not selected_services or not day or not slot:
             flash("Molimo odaberite frizera, barem jednu uslugu, datum i termin.", "warning")
             return redirect(url_for("main.usluge"))
 
-        # Cijena (zbroj)
+        # --- PROVJERA ZAUZETOSTI TERMINA ---
+        reservations = current_app.config.get("RESERVATIONS")
+        if reservations is None:
+            flash("Baza nije inicijalizirana (RESERVATIONS).", "danger")
+            return redirect(url_for("main.usluge"))
+
+        already = reservations.find_one({"barber": barber, "date": day, "time": slot})
+        if already:
+            flash("Taj termin je već zauzet za odabranog frizera. Odaberite drugi termin.", "warning")
+            return redirect(url_for("main.usluge"))
+
+        # --- IZRAČUN CIJENE I SPREMANJE ---
         price_map = {name: price for (name, _dur, price) in USLUGE}
         total_price = sum(price_map.get(s, 0) for s in selected_services)
 
-        # Spremi u Mongo (ako postoji config)
-        reservations = current_app.config.get("RESERVATIONS")
-        if reservations is None:
-            flash("Baza nije inicijalizirana (RESERVATIONS). Provjeri create_app().", "danger")
-            return redirect(url_for("main.usluge"))
-
         doc = {
-            "user": "demo",                 # kasnije zamijeniti stvarnim korisnikom
+            "user": "demo",
             "barber": barber,
             "services": selected_services,
-            "date": day,                    # 'YYYY-MM-DD'
-            "time": slot,                   # 'HH:MM'
+            "date": day,
+            "time": slot,
             "total_price": total_price,
             "created_at": datetime.now(),
         }
@@ -65,7 +70,7 @@ def usluge():
         flash("Rezervacija je spremljena!", "success")
         return redirect(url_for("main.moja_sisanja"))
 
-    # GET – pošalji podatke templateu
+    # --- GET: render bez diranja gore navedenih varijabli ---
     return render_template(
         "usluge.html",
         frizeri=FRIZERI,
