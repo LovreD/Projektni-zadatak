@@ -112,16 +112,19 @@ def usluge():
 @bp.route("/moja_sisanja")
 def moja_sisanja():
     reservations = current_app.config.get("RESERVATIONS")
-    items = []
+    if reservations is None:
+        flash("Baza nije inicijalizirana (RESERVATIONS).", "danger")
+        return render_template("moja_sisanja.html", items=[])
+
     u = current_user()
-    if not reservations:
-        flash("Baza nije inicijalizirana (RESERVATIONS).", "warning")
+    items = []
+    if u:
+        items = list(
+            reservations.find({"user_id": str(u["_id"])}).sort("created_at", -1)
+        )
     else:
-        if u:
-            items = list(reservations.find({"user_id": str(u["_id"])}).sort("created_at", -1))
-        else:
-            items = []
-            flash("Prijavite se za pregled svojih rezervacija.", "info")
+        flash("Prijavite se za pregled svojih rezervacija.", "info")
+
     return render_template("moja_sisanja.html", items=items)
 
 
