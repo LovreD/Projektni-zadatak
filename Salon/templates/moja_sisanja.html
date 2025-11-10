@@ -10,7 +10,7 @@
   <div class="list-group">
     {% for r in items %}
       <div class="list-group-item mb-3">
-        <h5 class="mb-1">{{ r.frizer }}</h5>
+        <h5 class="mb-1">Frizer: {{ r.barber }}</h5>
 
         <p class="mb-1">
           <strong>Usluge:</strong>
@@ -20,8 +20,8 @@
         </p>
 
         <p class="mb-1">
-          <strong>Datum:</strong> {{ r.datum }}<br>
-          <strong>Termin:</strong> {{ r.termin }}
+          <strong>Datum:</strong> {{ r.date }}<br>
+          <strong>Termin:</strong> {{ r.time }}
         </p>
 
         {% if r.created_at %}
@@ -32,4 +32,3 @@
   </div>
 {% endif %}
 {% endblock %}
-

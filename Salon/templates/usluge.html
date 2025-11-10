@@ -4,17 +4,17 @@
 {% block content %}
 <h1 class="mb-4">Odaberite frizera, usluge i termin</h1>
 
-{# --- SIGURNI DEFAULTI: ako "form" ne postoji ili su polja None --- #}
-{% set selected_barber   = (form.frizer.data if form is defined and form and form.frizer is defined and form.frizer and form.frizer.data) or '' %}
-{% set selected_services = (form.services.data if form is defined and form and form.services is defined and form.services and form.services.data) or [] %}
-{% set selected_date     = (form.datum.data|string if form is defined and form and form.datum is defined and form.datum and form.datum.data) or today %}
-{% set selected_time     = (form.termin.data if form is defined and form and form.termin is defined and form.termin and form.termin.data) or '' %}
+{# sigurni defaulti ako nema form objekta #}
+{% set selected_barber   = '' %}
+{% set selected_services = [] %}
+{% set selected_date     = today %}
+{% set selected_time     = '' %}
 
 <form method="POST" class="row g-4">
 
   <!-- Frizer (radio) -->
   <div class="col-12">
-    <label class="form-label">Frizer:</label>
+    <label class="form-label d-block">Frizer:</label>
     <div class="d-flex flex-wrap gap-3">
       {% for f in frizeri %}
       <div class="form-check">
@@ -33,9 +33,9 @@
     </div>
   </div>
 
-  <!-- Usluge (checkbox – moguće više) -->
+  <!-- Usluge (checkbox – može više) -->
   <div class="col-12">
-    <label class="form-label">Usluge (možete odabrati više):</label>
+    <label class="form-label d-block">Usluge (možete odabrati više):</label>
     <div class="row">
       {% for naziv, trajanje, cijena in usluge %}
       <div class="col-md-6">
@@ -88,5 +88,3 @@
 
 <p class="mt-4"><a href="{{ url_for('main.index') }}">← Povratak na početnu</a></p>
 {% endblock %}
-
-
