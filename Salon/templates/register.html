@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Registracija{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Registracija</h1>
+
+<form method="POST" class="row g-3">
+  <div class="col-md-6">
+    <label class="form-label">Ime i prezime</label>
+    <input type="text" name="full_name" class="form-control" required>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label">E-mail</label>
+    <input type="email" name="email" class="form-control" required>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label">Broj mobitela</label>
+    <input type="text" name="phone" class="form-control">
+  </div>
+  <div class="col-md-6">
+    <label class="form-label">Lozinka</label>
+    <input type="password" name="password" class="form-control" required>
+  </div>
+  <div class="col-md-6">
+    <label class="form-label">Ponovi lozinku</label>
+    <input type="password" name="confirm" class="form-control" required>
+  </div>
+  <div class="col-12">
+    <button class="btn btn-primary">Registriraj se</button>
+    <a href="{{ url_for('main.login') }}" class="btn btn-link">Već imate račun? Prijava</a>
+  </div>
+</form>
+{% endblock %}

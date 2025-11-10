@@ -10,11 +10,17 @@
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
   <div class="container">
     <a class="navbar-brand" href="{{ url_for('main.index') }}">Frizerski salon</a>
-    <div class="navbar-nav">
-      <a class="nav-link" href="{{ url_for('main.index') }}">Početna</a>
-      <a class="nav-link" href="{{ url_for('main.usluge') }}">Usluge</a>
-      <a class="nav-link" href="{{ url_for('main.moja_sisanja') }}">Moja šišanja</a>
-    </div>
+    <div class="navbar-nav ms-auto">
+  {% if session.get('user_id') %}
+    <a class="nav-link" href="{{ url_for('main.account') }}">Moj račun</a>
+    <a class="nav-link" href="{{ url_for('main.moja_sisanja') }}">Moja šišanja</a>
+    <a class="nav-link" href="{{ url_for('main.logout') }}">Odjava</a>
+  {% else %}
+    <a class="nav-link" href="{{ url_for('main.login') }}">Prijava</a>
+    <a class="nav-link" href="{{ url_for('main.register') }}">Registracija</a>
+  {% endif %}
+</div>
+
   </div>
 </nav>
 

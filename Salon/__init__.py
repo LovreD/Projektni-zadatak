@@ -1,6 +1,7 @@
 from flask import Flask
 from flask_bootstrap import Bootstrap5
 from pymongo import MongoClient
+import gridfs
 
 def create_app():
     app = Flask(__name__, template_folder="templates")
@@ -12,6 +13,9 @@ def create_app():
     db = client["frizerski_salon"]
     app.config["DB"] = db
     app.config["RESERVATIONS"] = db["reservations"]
+
+    app.config["USERS"] = db["users"]
+    app.config["FS"] = gridfs.GridFS(db)
 
     from .main import bp as main_bp
     app.register_blueprint(main_bp)
