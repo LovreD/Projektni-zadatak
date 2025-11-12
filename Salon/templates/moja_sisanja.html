@@ -27,8 +27,19 @@
         {% if r.created_at %}
         <small class="text-muted">Rezervirano: {{ r.created_at.strftime("%d.%m.%Y %H:%M") }}</small>
         {% endif %}
+
+              <div class="mt-3">
+        <form method="POST"
+              action="{{ url_for('main.cancel_reservation', id=r._id) }}"
+              onsubmit="return confirm('Jeste li sigurni da želite otkazati rezervaciju?');">
+          <button type="submit" class="btn btn-outline-danger btn-sm">
+            Otkaži šišanje
+          </button>
+        </form>
       </div>
-    {% endfor %}
-  </div>
+    </div>
+  {% endfor %}
+</div>
+
 {% endif %}
 {% endblock %}

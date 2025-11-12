@@ -12,15 +12,14 @@ def index():
 
 FRIZERI = ["Marija", "Lovre", "Gabrijel", "Ivan"]
 USLUGE = [
-    ("Klasično šišanje", 20, 12),
-    ("Fade šišanje", 20, 15),
-    ("Buzz cut", 15, 10),
-    ("Pranje kose", 0, 2),            
+    ("Klasično šišanje", 30, 12),
+    ("Fade šišanje", 30, 15),
+    ("Buzz cut", 20, 10),
+    ("Pranje kose", 10, 2),            
     ("Šišanje duge kose", 30, 20),
 ]
 
 def current_user():
-    """Vrati dokument korisnika iz baze ako je prijavljen, inače None."""
     uid = session.get("user_id")
     if not uid:
         return None
@@ -34,11 +33,9 @@ def current_user():
    
 
 def login_required():
-    """Jednostavna provjera (koristi je u rutama)"""
     return current_user() is not None
 
 def generate_timeslots():
-    """Termini svakih 30 min od 09:00 do 16:30"""
     slots = []
     for h in range(9, 17):            
         slots.append(f"{h:02d}:00")
@@ -60,12 +57,12 @@ def usluge():
 
         reservations = current_app.config.get("RESERVATIONS")
         if reservations is None:
-            flash("Baza nije inicijalizirana (RESERVATIONS).", "danger")
+            flash("Baza nije inicijalizirana (REZERVACIJE).", "danger")
             return redirect(url_for("main.usluge"))
 
         already = reservations.find_one({"barber": barber, "date": day, "time": slot})
         if already:
-            flash("Taj termin je već zauzet za odabranog frizera. Odaberite drugi termin.", "warning")
+            flash("Taj termin je već zauzet za odabranog frizera. Molimo odaberite drugi termin.", "warning")
             return redirect(url_for("main.usluge"))
 
         price_map = {name: price for (name, _dur, price) in USLUGE}
@@ -234,3 +231,30 @@ def photo(id):
     return send_file(photo, mimetype="image/jpeg")
 
 
+@bp.post("/rezervacije/<id>/cancel")
+def cancel_reservation(id):
+    reservations = current_app.config.get("RESERVATIONS")
+    if reservations is None:
+        flash("Baza nije inicijalizirana (RESERVATIONS).", "danger")
+        return redirect(url_for("main.moja_sisanja"))
+
+    u = current_user()
+    if not u:
+        flash("Prijavite se za otkazivanje rezervacije.", "info")
+        return redirect(url_for("main.login"))
+
+    try:
+        oid = ObjectId(id)
+    except Exception:
+        abort(404)
+
+    res = reservations.find_one({"_id": oid})
+    if not res:
+        abort(404)
+
+    if res.get("user_id") != str(u["_id"]):
+        abort(403)
+
+    reservations.delete_one({"_id": oid})
+    flash("Rezervacija uspješno otkazana.", "success")
+    return redirect(url_for("main.moja_sisanja"))
