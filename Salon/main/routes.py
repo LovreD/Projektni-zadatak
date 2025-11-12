@@ -5,19 +5,17 @@ from flask import session, send_file, abort
 from bson import ObjectId
 from werkzeug.security import generate_password_hash, check_password_hash
 
-# --- Početna ---
 @bp.route("/")
 def index():
     return render_template("index.html")
 
 
-# --- Podaci za usluge ---
 FRIZERI = ["Marija", "Lovre", "Gabrijel", "Ivan"]
 USLUGE = [
     ("Klasično šišanje", 20, 12),
     ("Fade šišanje", 20, 15),
     ("Buzz cut", 15, 10),
-    ("Pranje kose", 0, 2),            # dodatno
+    ("Pranje kose", 0, 2),            
     ("Šišanje duge kose", 30, 20),
 ]
 
@@ -42,28 +40,24 @@ def login_required():
 def generate_timeslots():
     """Termini svakih 30 min od 09:00 do 16:30"""
     slots = []
-    for h in range(9, 17):            # 09..16
+    for h in range(9, 17):            
         slots.append(f"{h:02d}:00")
         slots.append(f"{h:02d}:30")
     return slots
 
 
-# --- Usluge (GET/POST) ---
 @bp.route("/usluge", methods=["GET", "POST"])
 def usluge():
     if request.method == "POST":
-        # --- ČITANJE IZ FORME ---
         barber = (request.form.get("frizer") or "").strip()
         selected_services = request.form.getlist("usluge")
         day = request.form.get("datum") or ""
         slot = request.form.get("termin") or ""
 
-        # --- VALIDACIJA ---
         if not barber or not selected_services or not day or not slot:
             flash("Molimo odaberite frizera, barem jednu uslugu, datum i termin.", "warning")
             return redirect(url_for("main.usluge"))
 
-        # --- PROVJERA ZAUZETOSTI TERMINA ---
         reservations = current_app.config.get("RESERVATIONS")
         if reservations is None:
             flash("Baza nije inicijalizirana (RESERVATIONS).", "danger")
@@ -74,13 +68,15 @@ def usluge():
             flash("Taj termin je već zauzet za odabranog frizera. Odaberite drugi termin.", "warning")
             return redirect(url_for("main.usluge"))
 
-        # --- IZRAČUN CIJENE I SPREMANJE ---
         price_map = {name: price for (name, _dur, price) in USLUGE}
         total_price = sum(price_map.get(s, 0) for s in selected_services)
 
         u = current_user()
-        username = (u["full_name"] if u else "demo")
-        user_id = (str(u["_id"]) if u else None)
+        username = "demo"
+        user_id = None
+        if u:
+            username = u.get("full_name") or u.get("name") or u.get("email") or "demo"
+            user_id = str(u["_id"])
 
 
         doc = {
@@ -98,7 +94,6 @@ def usluge():
         flash("Rezervacija je spremljena!", "success")
         return redirect(url_for("main.moja_sisanja"))
 
-    # --- GET: render bez diranja gore navedenih varijabli ---
     return render_template(
         "usluge.html",
         frizeri=FRIZERI,
@@ -108,7 +103,6 @@ def usluge():
     )
 
 
-# --- Moja šišanja (lista iz baze) ---
 @bp.route("/moja_sisanja")
 def moja_sisanja():
     reservations = current_app.config.get("RESERVATIONS")
@@ -141,7 +135,6 @@ def register():
         phone = request.form.get("phone")
         password = request.form.get("password")
 
-        # Provjera da li email već postoji
         if users.find_one({"email": email}):
             flash("Taj email je već registriran.", "warning")
             return redirect(url_for("main.register"))
@@ -211,7 +204,6 @@ def account():
         photo_id = user.get("photo_id")
 
         if photo and photo.filename:
-            # Ako postoji stara slika — obriši
             if photo_id:
                 fs.delete(ObjectId(photo_id))
             new_photo_id = fs.put(photo, filename=photo.filename)
