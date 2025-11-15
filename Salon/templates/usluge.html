@@ -1,86 +1,99 @@
 {% extends "base.html" %}
-{% block title %}Usluge - Frizerski salon{% endblock %}
+{% block title %}Usluge{% endblock %}
 
 {% block content %}
-<h1 class="mb-4">Odaberite frizera, usluge i termin</h1>
+<h1 class="mb-4">Rezervacija termina</h1>
 
-{# sigurni defaulti ako nema form objekta #}
-{% set selected_barber   = '' %}
-{% set selected_services = [] %}
-{% set selected_date     = today %}
-{% set selected_time     = '' %}
+<form method="POST">
+  <div class="row">
 
-<form method="POST" class="row g-4">
+    <!-- ----------------------------- -->
+    <!--          FRIZERI              -->
+    <!-- ----------------------------- -->
+    <div class="col-md-4 mb-4">
+<h4 class="mb-3">Odaberite frizera</h4>
 
-  <div class="col-12">
-    <label class="form-label d-block">Frizer:</label>
-    <div class="d-flex flex-wrap gap-3">
-      {% for f in frizeri %}
-      <div class="form-check">
+{% for name in frizeri %}
+<div class="form-check mb-2">
+  <input
+    type="radio"
+    class="form-check-input"
+    name="frizer"
+    id="frizer-{{ loop.index }}"
+    value="{{ name }}">
+  <label class="form-check-label" for="frizer-{{ loop.index }}">
+    {{ name }}
+  </label>
+</div>
+{% endfor %}
+
+
+    </div>
+
+    <!-- ----------------------------- -->
+    <!--        GLAVNA USLUGA          -->
+    <!-- ----------------------------- -->
+    <div class="col-md-4 mb-4">
+      <h4 class="mb-3">Odaberite uslugu</h4>
+
+      {% for key, label, dur, price in usluge %}
+      <div class="form-check mb-2">
         <input
           class="form-check-input"
           type="radio"
-          name="frizer"
-          id="f_{{ loop.index }}"
-          value="{{ f }}"
-          {% if selected_barber == f %}checked{% endif %}
-          required
-        >
-        <label class="form-check-label" for="f_{{ loop.index }}">{{ f }}</label>
+          name="service"
+          id="service-{{ key }}"
+          value="{{ key }}">
+        <label class="form-check-label" for="service-{{ key }}">
+          {{ label }} ({{ dur }} min, {{ price }} €)
+        </label>
       </div>
       {% endfor %}
-    </div>
-  </div>
 
-  <div class="col-12">
-    <label class="form-label d-block">Usluge (možete odabrati više):</label>
-    <div class="row">
-      {% for naziv, trajanje, cijena in usluge %}
-      <div class="col-md-6">
-        <div class="form-check">
-          <input
-            class="form-check-input"
-            type="checkbox"
-            name="usluge"
-            id="u_{{ loop.index }}"
-            value="{{ naziv }}"
-            {% if naziv in selected_services %}checked{% endif %}
-          >
-          <label class="form-check-label" for="u_{{ loop.index }}">
-            {{ naziv }} — {% if trajanje %}{{ trajanje }} min — {% endif %}{{ cijena }} €
-          </label>
-        </div>
+      <!-- PRANJE KOSE -->
+      <div class="form-check mt-3">
+        <input
+          class="form-check-input"
+          type="checkbox"
+          name="wash"
+          id="wash">
+        <label class="form-check-label" for="wash">
+          Pranje kose (+{{ wash_price }} €)
+        </label>
       </div>
-      {% endfor %}
     </div>
-  </div>
 
-  <div class="col-md-6">
-    <label class="form-label" for="datum">Datum:</label>
-    <input
-      type="date"
-      id="datum"
-      name="datum"
-      class="form-control"
-      value="{{ selected_date }}"
-      required
-    >
-  </div>
+    <!-- ----------------------------- -->
+    <!--      DATUM + TERMIN            -->
+    <!-- ----------------------------- -->
+    <div class="col-md-4 mb-4">
+      <h4 class="mb-3">Odaberite datum i termin</h4>
 
-  <div class="col-md-6">
-    <label class="form-label" for="termin">Termin:</label>
-    <select id="termin" name="termin" class="form-select" required>
-      <option value="">-- Odaberite termin --</option>
-      {% for t in timeslots %}
-        <option value="{{ t }}" {% if selected_time == t %}selected{% endif %}>{{ t }}</option>
-      {% endfor %}
-    </select>
-  </div>
+      <div class="mb-3">
+        <label class="form-label" for="datum">Datum</label>
+        <input
+          type="date"
+          id="datum"
+          name="datum"
+          class="form-control"
+          min="{{ today }}">
+      </div>
 
-  <div class="col-12">
-    <button type="submit" class="btn btn-primary w-100">Rezerviraj</button>
+      <div class="mb-3">
+        <label class="form-label" for="termin">Termin</label>
+        <select id="termin" name="termin" class="form-select">
+          <option value="">Odaberite termin</option>
+          {% for t in timeslots %}
+          <option value="{{ t }}">{{ t }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <button type="submit" class="btn btn-primary w-100 mt-3">
+        Rezerviraj termin
+      </button>
+    </div>
+
   </div>
 </form>
-
-<p class="mt-4"><a href="{{ url_for('main.index') }}">← Povratak na početnu</a></p>
 {% endblock %}

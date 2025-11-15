@@ -10,14 +10,19 @@ def index():
     return render_template("index.html")
 
 
-FRIZERI = ["Marija", "Lovre", "Gabrijel", "Ivan"]
+FRIZERI = [ "Marija", "Lovre", "Gabrijel", "Ivan" ]
+
+# glavne usluge: (key, label, trajanje_min, cijena)
 USLUGE = [
-    ("Klasično šišanje", 30, 12),
-    ("Fade šišanje", 30, 15),
-    ("Buzz cut", 20, 10),
-    ("Pranje kose", 10, 2),            
-    ("Šišanje duge kose", 30, 20),
+    ("classic", "Klasično šišanje", 20, 12),
+    ("fade", "Fade šišanje", 20, 15),
+    ("buzz", "Buzz cut", 15, 10),
+    ("long", "Šišanje duge kose", 30, 20),
 ]
+
+WASH_PRICE = 2  # pranje kose 2 €
+
+
 
 def current_user():
     uid = session.get("user_id")
@@ -45,29 +50,50 @@ def generate_timeslots():
 
 @bp.route("/usluge", methods=["GET", "POST"])
 def usluge():
+    reservations = current_app.config.get("RESERVATIONS")
+    if reservations is None:
+        flash("Baza nije inicijalizirana (RESERVATIONS).", "danger")
+        return redirect(url_for("main.index"))
+
     if request.method == "POST":
+        # 1. ČITANJE PODATAKA IZ FORME
         barber = (request.form.get("frizer") or "").strip()
-        selected_services = request.form.getlist("usluge")
+        selected_service = request.form.get("service")  # jedna glavna usluga
+        wash = request.form.get("wash") == "on"         # checkbox (pranje kose)
         day = request.form.get("datum") or ""
         slot = request.form.get("termin") or ""
 
-        if not barber or not selected_services or not day or not slot:
-            flash("Molimo odaberite frizera, barem jednu uslugu, datum i termin.", "warning")
+        # 2. VALIDACIJA
+        if not barber or not selected_service or not day or not slot:
+            flash("Molimo odaberite frizera, uslugu, datum i termin.", "warning")
             return redirect(url_for("main.usluge"))
 
-        reservations = current_app.config.get("RESERVATIONS")
-        if reservations is None:
-            flash("Baza nije inicijalizirana (REZERVACIJE).", "danger")
-            return redirect(url_for("main.usluge"))
-
-        already = reservations.find_one({"barber": barber, "date": day, "time": slot})
+        # 3. PROVJERA ZAUZETOSTI TERMINA
+        already = reservations.find_one({
+            "barber": barber,
+            "date": day,
+            "time": slot
+        })
         if already:
-            flash("Taj termin je već zauzet za odabranog frizera. Molimo odaberite drugi termin.", "warning")
+            flash("Taj termin je već zauzet za odabranog frizera. Odaberite drugi termin.", "warning")
             return redirect(url_for("main.usluge"))
 
-        price_map = {name: price for (name, _dur, price) in USLUGE}
-        total_price = sum(price_map.get(s, 0) for s in selected_services)
+        # 4. IZRAČUN CIJENE
+        price_map = {key: price for (key, _label, _dur, price) in USLUGE}
+        label_map = {key: label for (key, label, _dur, _price) in USLUGE}
 
+        if selected_service not in price_map:
+            flash("Odabrana usluga nije ispravna.", "danger")
+            return redirect(url_for("main.usluge"))
+
+        total_price = price_map[selected_service]
+        services_list = [label_map[selected_service]]
+
+        if wash:
+            total_price += WASH_PRICE
+            services_list.append("Pranje kose")
+
+        # 5. KORISNIK (AKO JE PRIJAVLJEN)
         u = current_user()
         username = "demo"
         user_id = None
@@ -75,29 +101,32 @@ def usluge():
             username = u.get("full_name") or u.get("name") or u.get("email") or "demo"
             user_id = str(u["_id"])
 
-
+        # 6. SPREMANJE U BAZU
         doc = {
             "user_id": user_id,
             "user_name": username,
             "barber": barber,
-            "services": selected_services,
+            "services": services_list,   # ovo koristi moja_sisanja.html
             "date": day,
             "time": slot,
             "total_price": total_price,
             "created_at": datetime.now(),
         }
-
         reservations.insert_one(doc)
+
         flash("Rezervacija je spremljena!", "success")
         return redirect(url_for("main.moja_sisanja"))
 
+    # GET – samo prikaži formu
     return render_template(
         "usluge.html",
         frizeri=FRIZERI,
         usluge=USLUGE,
-        timeslots=generate_timeslots(),
+        timeslots=generate_timeslots(),   # ovo već imaš
         today=date.today().isoformat(),
+        wash_price=WASH_PRICE,
     )
+
 
 
 @bp.route("/moja_sisanja")
