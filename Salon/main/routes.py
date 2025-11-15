@@ -12,7 +12,6 @@ def index():
 
 FRIZERI = [ "Marija", "Lovre", "Gabrijel", "Ivan" ]
 
-# glavne usluge: (key, label, trajanje_min, cijena)
 USLUGE = [
     ("classic", "Klasično šišanje", 20, 12),
     ("fade", "Fade šišanje", 20, 15),
@@ -20,7 +19,7 @@ USLUGE = [
     ("long", "Šišanje duge kose", 30, 20),
 ]
 
-WASH_PRICE = 2  # pranje kose 2 €
+WASH_PRICE = 2 
 
 
 
@@ -56,19 +55,16 @@ def usluge():
         return redirect(url_for("main.index"))
 
     if request.method == "POST":
-        # 1. ČITANJE PODATAKA IZ FORME
         barber = (request.form.get("frizer") or "").strip()
-        selected_service = request.form.get("service")  # jedna glavna usluga
-        wash = request.form.get("wash") == "on"         # checkbox (pranje kose)
+        selected_service = request.form.get("service") 
+        wash = request.form.get("wash") == "on"         
         day = request.form.get("datum") or ""
         slot = request.form.get("termin") or ""
 
-        # 2. VALIDACIJA
         if not barber or not selected_service or not day or not slot:
             flash("Molimo odaberite frizera, uslugu, datum i termin.", "warning")
             return redirect(url_for("main.usluge"))
 
-        # 3. PROVJERA ZAUZETOSTI TERMINA
         already = reservations.find_one({
             "barber": barber,
             "date": day,
@@ -78,7 +74,6 @@ def usluge():
             flash("Taj termin je već zauzet za odabranog frizera. Odaberite drugi termin.", "warning")
             return redirect(url_for("main.usluge"))
 
-        # 4. IZRAČUN CIJENE
         price_map = {key: price for (key, _label, _dur, price) in USLUGE}
         label_map = {key: label for (key, label, _dur, _price) in USLUGE}
 
@@ -93,7 +88,6 @@ def usluge():
             total_price += WASH_PRICE
             services_list.append("Pranje kose")
 
-        # 5. KORISNIK (AKO JE PRIJAVLJEN)
         u = current_user()
         username = "demo"
         user_id = None
@@ -101,12 +95,11 @@ def usluge():
             username = u.get("full_name") or u.get("name") or u.get("email") or "demo"
             user_id = str(u["_id"])
 
-        # 6. SPREMANJE U BAZU
         doc = {
             "user_id": user_id,
             "user_name": username,
             "barber": barber,
-            "services": services_list,   # ovo koristi moja_sisanja.html
+            "services": services_list,   
             "date": day,
             "time": slot,
             "total_price": total_price,
@@ -117,12 +110,12 @@ def usluge():
         flash("Rezervacija je spremljena!", "success")
         return redirect(url_for("main.moja_sisanja"))
 
-    # GET – samo prikaži formu
+
     return render_template(
         "usluge.html",
         frizeri=FRIZERI,
         usluge=USLUGE,
-        timeslots=generate_timeslots(),   # ovo već imaš
+        timeslots=generate_timeslots(),  
         today=date.today().isoformat(),
         wash_price=WASH_PRICE,
     )
@@ -156,21 +149,51 @@ def register():
         return redirect(url_for("main.index"))
 
     if request.method == "POST":
-        name = request.form.get("name")
-        email = request.form.get("email")
-        phone = request.form.get("phone")
-        password = request.form.get("password")
+        full_name = (request.form.get("full_name") or "").strip()
+        email = (request.form.get("email") or "").strip().lower()
+        phone = (request.form.get("phone") or "").strip()
+        password = request.form.get("password") or ""
+        confirm = request.form.get("confirm") or ""
 
+        has_error = False
+
+        # 1) Ime i prezime: min 3 znaka
+        if len(full_name) < 3:
+            flash("Ime i prezime mora imati barem 3 znaka.", "warning")
+            has_error = True
+
+        # 2) Broj mobitela: samo brojke i min 10 znamenki
+        if not phone.isdigit() or len(phone) < 10:
+            flash("Broj mobitela mora sadržavati samo znamenke i imati najmanje 10 znamenki.", "warning")
+            has_error = True
+
+        # 3) Lozinka: min 8 znakova
+        if len(password) < 8:
+            flash("Lozinka mora imati najmanje 8 znakova.", "warning")
+            has_error = True
+
+        # 4) Potvrda lozinke
+        if password != confirm:
+            flash("Lozinke se ne podudaraju.", "warning")
+            has_error = True
+
+        # 5) Email već postoji?
         if users.find_one({"email": email}):
             flash("Taj email je već registriran.", "warning")
+            has_error = True
+
+        if has_error:
+            # ako ima grešaka, vrati korisnika na formu
             return redirect(url_for("main.register"))
 
+        # ako je sve ok, spremi korisnika
         users.insert_one({
-            "name": name,
+            "full_name": full_name,
             "email": email,
             "phone": phone,
-            "password": password,
-            "photo_id": None
+            "password": password,   # ostavljamo plain tekst jer tako radimo u projektu
+            "photo_id": None,
+            "created_at": datetime.now(),
         })
 
         flash("Registracija uspješna! Sad se možete prijaviti.", "success")
