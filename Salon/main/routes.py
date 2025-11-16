@@ -4,6 +4,8 @@ from . import bp
 from flask import session, send_file, abort
 from bson import ObjectId
 from werkzeug.security import generate_password_hash, check_password_hash
+from .. import limiter
+
 
 @bp.route("/")
 def index():
@@ -142,6 +144,7 @@ def moja_sisanja():
 
 
 @bp.route("/register", methods=["GET", "POST"])
+@limiter.limit("3 per minute")
 def register():
     users = current_app.config.get("USERS")
     if users is None:
@@ -202,6 +205,7 @@ def register():
     return render_template("register.html")
 
 @bp.route("/login", methods=["GET", "POST"])
+@limiter.limit("5 per minute")
 def login():
     users = current_app.config.get("USERS")
     if users is None:

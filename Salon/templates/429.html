@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Previše zahtjeva - Frizerski salon{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <h1 class="display-4 text-warning">429</h1>
+            <h2 class="h4 mb-3">Previše zahtjeva</h2>
+            <p class="mb-4">
+                Poslali ste previše zahtjeva u kratkom vremenu.<br>
+                Molimo pričekajte nekoliko trenutaka i pokušajte ponovo.
+            </p>
+            <a href="{{ url_for('main.login') }}" class="btn btn-primary">
+                Vrati se na prijavu
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
