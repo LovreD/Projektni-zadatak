@@ -6,16 +6,21 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
 
-# globalni Limiter – možemo ga koristiti u svim blueprintima
 limiter = Limiter(
     key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"]  # možeš ostaviti ovako
+    default_limits=["200 per day", "50 per hour"] 
 )
 
 
 def create_app():
     app = Flask(__name__, template_folder="templates")
     app.config["SECRET_KEY"] = "tajni_kljuc"
+
+
+    app.config["SESSION_COOKIE_HTTPONLY"] = True
+    app.config["SESSION_COOKIE_SAMESITE"] = "Lax" 
+    app.config["SESSION_COOKIE_SECURE"] = False
+
 
     Bootstrap5(app)
 
@@ -37,5 +42,13 @@ def create_app():
     @app.errorhandler(429)
     def too_many_requests(e):
         return render_template("429.html"), 429
+    
+    @app.after_request
+    def add_security_headers(response):
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "SAMEORIGIN"
+        response.headers["Referrer-Policy"] = "no-referrer-when-downgrade"
+        return response
+
 
     return app

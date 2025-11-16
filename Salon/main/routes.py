@@ -160,41 +160,34 @@ def register():
 
         has_error = False
 
-        # 1) Ime i prezime: min 3 znaka
         if len(full_name) < 3:
             flash("Ime i prezime mora imati barem 3 znaka.", "warning")
             has_error = True
 
-        # 2) Broj mobitela: samo brojke i min 10 znamenki
         if not phone.isdigit() or len(phone) < 10:
             flash("Broj mobitela mora sadržavati samo znamenke i imati najmanje 10 znamenki.", "warning")
             has_error = True
 
-        # 3) Lozinka: min 8 znakova
         if len(password) < 8:
             flash("Lozinka mora imati najmanje 8 znakova.", "warning")
             has_error = True
 
-        # 4) Potvrda lozinke
         if password != confirm:
             flash("Lozinke se ne podudaraju.", "warning")
             has_error = True
 
-        # 5) Email već postoji?
         if users.find_one({"email": email}):
             flash("Taj email je već registriran.", "warning")
             has_error = True
 
         if has_error:
-            # ako ima grešaka, vrati korisnika na formu
             return redirect(url_for("main.register"))
 
-        # ako je sve ok, spremi korisnika
         users.insert_one({
             "full_name": full_name,
             "email": email,
             "phone": phone,
-            "password": password,   # ostavljamo plain tekst jer tako radimo u projektu
+            "password": password, 
             "photo_id": None,
             "created_at": datetime.now(),
         })
