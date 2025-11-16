@@ -4,7 +4,8 @@
 {% block content %}
 <h1 class="mb-4">Prijava</h1>
 
-<form method="POST" class="row g-3">
+<form method="POST" action="{{ url_for('main.login', next=request.args.get('next')) }}">
+    <input type="hidden" name="next" value="{{ request.args.get('next', '') }}">
   <div class="col-md-6">
     <label class="form-label">E-mail</label>
     <input type="email" name="email" class="form-control" required>

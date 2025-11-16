@@ -1,18 +1,35 @@
 from datetime import datetime, date
-from flask import render_template, request, redirect, url_for, flash, current_app
+from flask import (
+    render_template,
+    request,
+    redirect,
+    url_for,
+    flash,
+    current_app,
+    session,
+    send_file,
+    abort,
+)
 from . import bp
-from flask import session, send_file, abort
 from bson import ObjectId
 from werkzeug.security import generate_password_hash, check_password_hash
-from .. import limiter
+from .. import limiter, User
+from flask_login import login_user, logout_user, login_required, current_user
 
+# --------------------------------------
+# Početna stranica
+# --------------------------------------
 
 @bp.route("/")
 def index():
     return render_template("index.html")
 
 
-FRIZERI = [ "Marija", "Lovre", "Gabrijel", "Ivan" ]
+# --------------------------------------
+# Konstante za frizere i usluge
+# --------------------------------------
+
+FRIZERI = ["Marija", "Lovre", "Gabrijel", "Ivan"]
 
 USLUGE = [
     ("classic", "Klasično šišanje", 20, 12),
@@ -21,33 +38,20 @@ USLUGE = [
     ("long", "Šišanje duge kose", 30, 20),
 ]
 
-WASH_PRICE = 2 
+WASH_PRICE = 2  # dodatna usluga pranje kose
 
-
-
-def current_user():
-    uid = session.get("user_id")
-    if not uid:
-        return None
-
-    users = current_app.config.get("USERS")
-    if users is None:
-        return None
-
-    return users.find_one({"_id": ObjectId(uid)})
-
-   
-
-def login_required():
-    return current_user() is not None
 
 def generate_timeslots():
     slots = []
-    for h in range(9, 17):            
+    for h in range(9, 17):  # 9-17, svakih 30 min
         slots.append(f"{h:02d}:00")
         slots.append(f"{h:02d}:30")
     return slots
 
+
+# --------------------------------------
+# Usluge (rezervacija termina)
+# --------------------------------------
 
 @bp.route("/usluge", methods=["GET", "POST"])
 def usluge():
@@ -58,24 +62,32 @@ def usluge():
 
     if request.method == "POST":
         barber = (request.form.get("frizer") or "").strip()
-        selected_service = request.form.get("service") 
-        wash = request.form.get("wash") == "on"         
+        selected_service = request.form.get("service")
+        wash = request.form.get("wash") == "on"
         day = request.form.get("datum") or ""
         slot = request.form.get("termin") or ""
 
+        # 1) provjera je li sve odabrano
         if not barber or not selected_service or not day or not slot:
             flash("Molimo odaberite frizera, uslugu, datum i termin.", "warning")
             return redirect(url_for("main.usluge"))
 
-        already = reservations.find_one({
-            "barber": barber,
-            "date": day,
-            "time": slot
-        })
+        # 2) provjera zauzetosti termina za tog frizera
+        already = reservations.find_one(
+            {
+                "barber": barber,
+                "date": day,
+                "time": slot,
+            }
+        )
         if already:
-            flash("Taj termin je već zauzet za odabranog frizera. Odaberite drugi termin.", "warning")
+            flash(
+                "Taj termin je već zauzet za odabranog frizera. Odaberite drugi termin.",
+                "warning",
+            )
             return redirect(url_for("main.usluge"))
 
+        # 3) cijena i naziv usluge
         price_map = {key: price for (key, _label, _dur, price) in USLUGE}
         label_map = {key: label for (key, label, _dur, _price) in USLUGE}
 
@@ -86,22 +98,32 @@ def usluge():
         total_price = price_map[selected_service]
         services_list = [label_map[selected_service]]
 
+        # dodatna usluga – pranje kose
         if wash:
             total_price += WASH_PRICE
             services_list.append("Pranje kose")
 
-        u = current_user()
-        username = "demo"
-        user_id = None
-        if u:
-            username = u.get("full_name") or u.get("name") or u.get("email") or "demo"
-            user_id = str(u["_id"])
+        # 4) ako korisnik NIJE prijavljen – spremi rezervaciju u session i pošalji na login
+        if not current_user.is_authenticated:
+            session["pending_reservation"] = {
+                "barber": barber,
+                "services": services_list,
+                "date": day,
+                "time": slot,
+                "total_price": total_price,
+            }
+            flash("Prijavite se kako biste dovršili rezervaciju.", "info")
+            return redirect(url_for("main.login", next=url_for("main.moja_sisanja")))
+
+        # 5) ako JE prijavljen – spremi odmah u MongoDB
+        username = current_user.full_name or current_user.email or "demo"
+        user_id = current_user.id
 
         doc = {
             "user_id": user_id,
             "user_name": username,
             "barber": barber,
-            "services": services_list,   
+            "services": services_list,
             "date": day,
             "time": slot,
             "total_price": total_price,
@@ -112,36 +134,54 @@ def usluge():
         flash("Rezervacija je spremljena!", "success")
         return redirect(url_for("main.moja_sisanja"))
 
-
+    # GET: prikaz forme
     return render_template(
         "usluge.html",
         frizeri=FRIZERI,
         usluge=USLUGE,
-        timeslots=generate_timeslots(),  
+        timeslots=generate_timeslots(),
         today=date.today().isoformat(),
         wash_price=WASH_PRICE,
     )
 
 
 
-@bp.route("/moja_sisanja")
+# --------------------------------------
+# Moja šišanja (pregled rezervacija)
+# --------------------------------------
+
+@bp.route("/moja-sisanja")
+@login_required
 def moja_sisanja():
     reservations = current_app.config.get("RESERVATIONS")
     if reservations is None:
         flash("Baza nije inicijalizirana (RESERVATIONS).", "danger")
-        return render_template("moja_sisanja.html", items=[])
+        return redirect(url_for("main.index"))
 
-    u = current_user()
+    # samo moje rezervacije
+    res = list(
+        reservations.find({"user_id": current_user.id}).sort("date", 1)
+    )
+
     items = []
-    if u:
-        items = list(
-            reservations.find({"user_id": str(u["_id"])}).sort("created_at", -1)
+    for r in res:
+        items.append(
+            {
+                "id": str(r["_id"]),
+                "barber": r["barber"],
+                "services": r["services"],
+                "date": r["date"],
+                "time": r["time"],
+                "total_price": r.get("total_price", 0),
+            }
         )
-    else:
-        flash("Prijavite se za pregled svojih rezervacija.", "info")
 
     return render_template("moja_sisanja.html", items=items)
 
+
+# --------------------------------------
+# Registracija
+# --------------------------------------
 
 @bp.route("/register", methods=["GET", "POST"])
 @limiter.limit("3 per minute")
@@ -165,7 +205,10 @@ def register():
             has_error = True
 
         if not phone.isdigit() or len(phone) < 10:
-            flash("Broj mobitela mora sadržavati samo znamenke i imati najmanje 10 znamenki.", "warning")
+            flash(
+                "Broj mobitela mora sadržavati samo znamenke i imati najmanje 10 znamenki.",
+                "warning",
+            )
             has_error = True
 
         if len(password) < 8:
@@ -183,88 +226,156 @@ def register():
         if has_error:
             return redirect(url_for("main.register"))
 
-        users.insert_one({
-            "full_name": full_name,
-            "email": email,
-            "phone": phone,
-            "password": password, 
-            "photo_id": None,
-            "created_at": datetime.now(),
-        })
+        users.insert_one(
+            {
+                "full_name": full_name,
+                "email": email,
+                "phone": phone,
+                "password": password,  # (za projekt OK, inače hashirati)
+                "photo_id": None,
+                "created_at": datetime.now(),
+            }
+        )
 
         flash("Registracija uspješna! Sad se možete prijaviti.", "success")
         return redirect(url_for("main.login"))
 
     return render_template("register.html")
 
+
+# --------------------------------------
+# Login / Logout
+# --------------------------------------
+
 @bp.route("/login", methods=["GET", "POST"])
 @limiter.limit("5 per minute")
 def login():
-    users = current_app.config.get("USERS")
-    if users is None:
-        flash("Baza nije inicijalizirana (USERS).", "danger")
-        return redirect(url_for("main.index"))
-
     if request.method == "POST":
-        email = request.form.get("email")
-        password = request.form.get("password")
+        email = (request.form.get("email") or "").strip().lower()
+        password = request.form.get("password") or ""
 
-        user = users.find_one({"email": email, "password": password})
-        if not user:
-            flash("Neispravni podaci za prijavu.", "danger")
+        users = current_app.config.get("USERS")
+        if users is None:
+            flash("Baza korisnika nije inicijalizirana.", "danger")
             return redirect(url_for("main.login"))
 
-        session["user_id"] = str(user["_id"])
+        doc = users.find_one({"email": email, "password": password})
+        if not doc:
+            flash("Pogrešan email ili lozinka.", "danger")
+            return redirect(url_for("main.login"))
+
+        user_obj = User(doc)
+        login_user(user_obj)
+
         flash("Uspješno ste prijavljeni.", "success")
-        return redirect(url_for("main.account"))
+
+        # -----------------------------
+        # Ako postoji pending rezervacija u sessionu – spremi je sada
+        # -----------------------------
+        pending = session.pop("pending_reservation", None)
+        if pending:
+            reservations = current_app.config.get("RESERVATIONS")
+            if reservations is not None:
+                # još jedna sigurnosna provjera – je li termin već zauzet
+                already = reservations.find_one(
+                    {
+                        "barber": pending["barber"],
+                        "date": pending["date"],
+                        "time": pending["time"],
+                    }
+                )
+                if already:
+                    flash(
+                        "Termin koji ste ranije odabrali u međuvremenu je zauzet. Odaberite drugi termin.",
+                        "warning",
+                    )
+                else:
+                    username = current_user.full_name or current_user.email or "demo"
+                    doc = {
+                        "user_id": current_user.id,
+                        "user_name": username,
+                        "barber": pending["barber"],
+                        "services": pending["services"],
+                        "date": pending["date"],
+                        "time": pending["time"],
+                        "total_price": pending["total_price"],
+                        "created_at": datetime.now(),
+                    }
+                    reservations.insert_one(doc)
+                    flash("Vaša ranije odabrana rezervacija je spremljena.", "success")
+
+        # -----------------------------
+        # Redirect na next ili fallback
+        # -----------------------------
+        next_page = request.args.get("next") or request.form.get("next")
+        if next_page:
+            return redirect(next_page)
+
+        return redirect(url_for("main.index"))
 
     return render_template("login.html")
 
 
+
+
 @bp.route("/logout")
+@login_required
 def logout():
-    session.pop("user_id", None)
+    logout_user()
     flash("Odjavljeni ste.", "info")
     return redirect(url_for("main.index"))
 
 
-@bp.route("/account", methods=["GET", "POST"])
-def account():
-    user = current_user()
-    if not user:
-        flash("Morate biti prijavljeni.", "warning")
-        return redirect(url_for("main.login"))
+# --------------------------------------
+# Korisnički račun
+# --------------------------------------
 
+@bp.route("/account", methods=["GET", "POST"])
+@login_required
+def account():
     users = current_app.config.get("USERS")
     fs = current_app.config.get("FS")
     if users is None or fs is None:
         flash("Baza nije inicijalizirana (USERS/FS).", "danger")
         return redirect(url_for("main.index"))
 
+    # učitaj svježe podatke iz baze
+    user_doc = users.find_one({"_id": ObjectId(current_user.id)})
+    if not user_doc:
+        flash("Korisnik nije pronađen.", "danger")
+        return redirect(url_for("main.logout"))
+
     if request.method == "POST":
-        name = request.form.get("name")
-        email = request.form.get("email")
-        phone = request.form.get("phone")
+        name = request.form.get("name") or ""
+        email = request.form.get("email") or ""
+        phone = request.form.get("phone") or ""
 
         photo = request.files.get("photo")
-        photo_id = user.get("photo_id")
+        photo_id = user_doc.get("photo_id")
 
         if photo and photo.filename:
             if photo_id:
-                fs.delete(ObjectId(photo_id))
+                try:
+                    fs.delete(ObjectId(photo_id))
+                except Exception:
+                    pass
             new_photo_id = fs.put(photo, filename=photo.filename)
             photo_id = new_photo_id
 
         users.update_one(
-            {"_id": user["_id"]},
-            {"$set": {"name": name, "email": email, "phone": phone, "photo_id": photo_id}}
+            {"_id": user_doc["_id"]},
+            {"$set": {"name": name, "email": email, "phone": phone, "photo_id": photo_id}},
         )
 
         flash("Podaci uspješno ažurirani.", "success")
         return redirect(url_for("main.account"))
 
-    return render_template("account.html", user=user)
+    return render_template("account.html", user=user_doc)
 
+
+# --------------------------------------
+# Slika korisnika
+# --------------------------------------
 
 @bp.route("/photo/<id>")
 def photo(id):
@@ -274,23 +385,23 @@ def photo(id):
 
     try:
         photo = fs.get(ObjectId(id))
-    except:
+    except Exception:
         abort(404)
 
     return send_file(photo, mimetype="image/jpeg")
 
 
+# --------------------------------------
+# Otkazivanje rezervacije
+# --------------------------------------
+
 @bp.post("/rezervacije/<id>/cancel")
+@login_required
 def cancel_reservation(id):
     reservations = current_app.config.get("RESERVATIONS")
     if reservations is None:
         flash("Baza nije inicijalizirana (RESERVATIONS).", "danger")
         return redirect(url_for("main.moja_sisanja"))
-
-    u = current_user()
-    if not u:
-        flash("Prijavite se za otkazivanje rezervacije.", "info")
-        return redirect(url_for("main.login"))
 
     try:
         oid = ObjectId(id)
@@ -301,9 +412,10 @@ def cancel_reservation(id):
     if not res:
         abort(404)
 
-    if res.get("user_id") != str(u["_id"]):
+    if res.get("user_id") != current_user.id:
         abort(403)
 
     reservations.delete_one({"_id": oid})
     flash("Rezervacija uspješno otkazana.", "success")
     return redirect(url_for("main.moja_sisanja"))
+

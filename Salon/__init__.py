@@ -4,6 +4,8 @@ from pymongo import MongoClient
 import gridfs
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_login import LoginManager, UserMixin, current_user
+from bson import ObjectId
 
 
 limiter = Limiter(
@@ -32,6 +34,8 @@ def create_app():
     app.config["USERS"] = db["users"]
     app.config["FS"] = gridfs.GridFS(db)
 
+    login_manager.init_app(app)
+
     limiter.init_app(app)
 
     from .main import bp as main_bp
@@ -52,3 +56,38 @@ def create_app():
 
 
     return app
+
+login_manager = LoginManager()
+login_manager.login_view = "main.login"  # ako ti je login ruta main.login
+
+
+class User(UserMixin):
+    def __init__(self, data):
+        self.data = data
+        # Flask-Login koristi svojstvo "id"
+        self.id = str(data["_id"])
+
+    @property
+    def full_name(self):
+        return self.data.get("full_name") or self.data.get("name") or ""
+
+    @property
+    def email(self):
+        return self.data.get("email") or ""
+    
+
+from flask import current_app
+
+@login_manager.user_loader
+def load_user(user_id):
+    """Funkcija koju Flask-Login koristi da iz sessiona učita korisnika iz baze."""
+    users = current_app.config.get("USERS")
+    if users is None:
+        return None
+    try:
+        doc = users.find_one({"_id": ObjectId(user_id)})
+    except Exception:
+        return None
+    if not doc:
+        return None
+    return User(doc)
