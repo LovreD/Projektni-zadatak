@@ -395,13 +395,19 @@ def photo(id):
 # Otkazivanje rezervacije
 # --------------------------------------
 
-@bp.post("/rezervacije/<id>/cancel")
+@bp.route("/rezervacije/<id>/cancel", methods=["POST"])
 @login_required
 def cancel_reservation(id):
     reservations = current_app.config.get("RESERVATIONS")
     if reservations is None:
         flash("Baza nije inicijalizirana (RESERVATIONS).", "danger")
         return redirect(url_for("main.moja_sisanja"))
+
+    # current_user dolazi iz flask_login
+    u = current_user
+    if not u.is_authenticated:
+        flash("Prijavite se za otkazivanje rezervacije.", "info")
+        return redirect(url_for("main.login"))
 
     try:
         oid = ObjectId(id)
@@ -412,7 +418,8 @@ def cancel_reservation(id):
     if not res:
         abort(404)
 
-    if res.get("user_id") != current_user.id:
+    # sigurnost: dozvoli brisanje samo vlastite rezervacije
+    if str(res.get("user_id")) != str(u.id):
         abort(403)
 
     reservations.delete_one({"_id": oid})

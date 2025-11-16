@@ -1,45 +1,49 @@
 {% extends "base.html" %}
+
 {% block title %}Moja šišanja{% endblock %}
 
 {% block content %}
-<h1 class="mb-4">Moja šišanja</h1>
+<div class="container py-4">
+    <h2 class="mb-4">Moja šišanja</h2>
 
-{% if not items %}
-  <p>Trenutno nemaš nijednu rezervaciju.</p>
-{% else %}
-  <div class="list-group">
-    {% for r in items %}
-      <div class="list-group-item mb-3">
-        <h5 class="mb-1">Frizer: {{ r.barber }}</h5>
+    {% if not items %}
+        <p class="text-muted">Trenutno nemate niti jednu rezervaciju.</p>
+    {% else %}
+        <div class="row g-3">
+            {% for r in items %}
+            <div class="col-md-6 col-lg-4">
+                <div class="card h-100">
+                    <div class="card-body d-flex flex-column">
+                        <h5 class="card-title">{{ r.barber }}</h5>
 
-        <p class="mb-1">
-          <strong>Usluge:</strong>
-          {% for s in r.services %}
-            {{ s }}{% if not loop.last %}, {% endif %}
-          {% endfor %}
-        </p>
+                        <p class="mb-1">
+                            <strong>Usluge:</strong>
+                            {{ r.services|join(", ") }}
+                        </p>
+                        <p class="mb-1">
+                            <strong>Datum:</strong> {{ r.date }}
+                        </p>
+                        <p class="mb-1">
+                            <strong>Termin:</strong> {{ r.time }}
+                        </p>
+                        <p class="mb-3">
+                            <strong>Cijena:</strong> {{ r.total_price }} €
+                        </p>
 
-        <p class="mb-1">
-          <strong>Datum:</strong> {{ r.date }}<br>
-          <strong>Termin:</strong> {{ r.time }}
-        </p>
-
-        {% if r.created_at %}
-        <small class="text-muted">Rezervirano: {{ r.created_at.strftime("%d.%m.%Y %H:%M") }}</small>
-        {% endif %}
-
-              <div class="mt-3">
-        <form method="POST"
-              action="{{ url_for('main.cancel_reservation', id=r._id) }}"
-              onsubmit="return confirm('Jeste li sigurni da želite otkazati rezervaciju?');">
-          <button type="submit" class="btn btn-outline-danger btn-sm">
-            Otkaži šišanje
-          </button>
-        </form>
-      </div>
-    </div>
-  {% endfor %}
+                        <form method="POST"
+                              action="{{ url_for('main.cancel_reservation', id=r.id) }}"
+                              class="mt-auto"
+                              onsubmit="return confirm('Jeste li sigurni da želite otkazati rezervaciju?');">
+                            <button type="submit" class="btn btn-outline-danger btn-sm">
+                                Otkaži šišanje
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% endif %}
 </div>
-
-{% endif %}
 {% endblock %}
+
