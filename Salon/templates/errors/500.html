@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}500 – Server error{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+
+            <h1 class="display-4 text-danger">500</h1>
+            <h2 class="h4 mb-3">Greška na serveru</h2>
+
+            <p class="mb-4">
+                Došlo je do neočekivane greške na serveru.<br>
+                Naš tim radi na tome da sve opet proradi.
+            </p>
+
+            <a href="{{ url_for('main.index') }}" class="btn btn-primary">
+                Povratak na početnu
+            </a>
+
+        </div>
+    </div>
+</div>
+{% endblock %}

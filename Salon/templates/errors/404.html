@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}404 – Stranica nije pronađena{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+
+            <h1 class="display-4 text-warning">404</h1>
+            <h2 class="h4 mb-3">Stranica nije pronađena</h2>
+
+            <p class="mb-4">
+                Stranica koju pokušavate otvoriti ne postoji.<br>
+                Moguće da je obrisana ili premještena.
+            </p>
+
+            <a href="{{ url_for('main.index') }}" class="btn btn-primary">
+                Vrati me na početnu
+            </a>
+
+        </div>
+    </div>
+</div>
+{% endblock %}

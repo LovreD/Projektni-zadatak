@@ -62,10 +62,21 @@ def create_app():
     app.register_blueprint(main_bp)
 
 
+    @app.errorhandler(403)
+    def err403(e):
+        return render_template("errors/403.html"), 403
 
+    @app.errorhandler(404)
+    def err404(e):
+        return render_template("errors/404.html"), 404
+
+    @app.errorhandler(500)
+    def err500(e):
+        return render_template("errors/500.html"), 500
+    
     @app.errorhandler(429)
     def too_many_requests(e):
-        return render_template("429.html"), 429
+        return render_template("errors/429.html"), 429
     
     @app.after_request
     def add_security_headers(response):

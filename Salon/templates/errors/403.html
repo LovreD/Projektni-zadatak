@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}403 – Zabranjen pristup{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+
+            <h1 class="display-4 text-danger">403</h1>
+            <h2 class="h4 mb-3">Zabranjen pristup</h2>
+
+            <p class="mb-4">
+                Nemate dopuštenje za pristup ovoj stranici.<br>
+                Ako mislite da je ovo greška, kontaktirajte administratora.
+            </p>
+
+            <a href="{{ url_for('main.index') }}" class="btn btn-primary">
+                Povratak na početnu
+            </a>
+
+        </div>
+    </div>
+</div>
+{% endblock %}
