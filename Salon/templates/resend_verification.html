@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}Ponovno slanje verifikacije{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <h2>Ponovno slanje verifikacijskog emaila</h2>
+    <p class="text-muted">Upišite email koji ste koristili pri registraciji.</p>
+    <form method="POST">
+        <div class="mb-3">
+            <label for="email" class="form-label">Email adresa</label>
+            <input type="email" class="form-control" id="email" name="email" required>
+        </div>
+        <button class="btn btn-primary">Pošalji verifikacijski email</button>
+    </form>
+</div>
+{% endblock %}

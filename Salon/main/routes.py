@@ -15,19 +15,17 @@ from bson import ObjectId
 from werkzeug.security import generate_password_hash, check_password_hash
 from .. import limiter, User
 from flask_login import login_user, logout_user, login_required, current_user
+from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
+from .. import mail
+from flask_mail import Message
+from flask_login import UserMixin
 
-# --------------------------------------
-# Početna stranica
-# --------------------------------------
 
 @bp.route("/")
 def index():
     return render_template("index.html")
 
 
-# --------------------------------------
-# Konstante za frizere i usluge
-# --------------------------------------
 
 FRIZERI = ["Marija", "Lovre", "Gabrijel", "Ivan"]
 
@@ -38,20 +36,16 @@ USLUGE = [
     ("long", "Šišanje duge kose", 30, 20),
 ]
 
-WASH_PRICE = 2  # dodatna usluga pranje kose
+WASH_PRICE = 2 
 
 
 def generate_timeslots():
     slots = []
-    for h in range(9, 17):  # 9-17, svakih 30 min
+    for h in range(9, 17):  
         slots.append(f"{h:02d}:00")
         slots.append(f"{h:02d}:30")
     return slots
 
-
-# --------------------------------------
-# Usluge (rezervacija termina)
-# --------------------------------------
 
 @bp.route("/usluge", methods=["GET", "POST"])
 def usluge():
@@ -67,12 +61,10 @@ def usluge():
         day = request.form.get("datum") or ""
         slot = request.form.get("termin") or ""
 
-        # 1) provjera je li sve odabrano
         if not barber or not selected_service or not day or not slot:
             flash("Molimo odaberite frizera, uslugu, datum i termin.", "warning")
             return redirect(url_for("main.usluge"))
 
-        # 2) provjera zauzetosti termina za tog frizera
         already = reservations.find_one(
             {
                 "barber": barber,
@@ -87,7 +79,6 @@ def usluge():
             )
             return redirect(url_for("main.usluge"))
 
-        # 3) cijena i naziv usluge
         price_map = {key: price for (key, _label, _dur, price) in USLUGE}
         label_map = {key: label for (key, label, _dur, _price) in USLUGE}
 
@@ -98,12 +89,10 @@ def usluge():
         total_price = price_map[selected_service]
         services_list = [label_map[selected_service]]
 
-        # dodatna usluga – pranje kose
         if wash:
             total_price += WASH_PRICE
             services_list.append("Pranje kose")
 
-        # 4) ako korisnik NIJE prijavljen – spremi rezervaciju u session i pošalji na login
         if not current_user.is_authenticated:
             session["pending_reservation"] = {
                 "barber": barber,
@@ -115,7 +104,6 @@ def usluge():
             flash("Prijavite se kako biste dovršili rezervaciju.", "info")
             return redirect(url_for("main.login", next=url_for("main.moja_sisanja")))
 
-        # 5) ako JE prijavljen – spremi odmah u MongoDB
         username = current_user.full_name or current_user.email or "demo"
         user_id = current_user.id
 
@@ -134,7 +122,6 @@ def usluge():
         flash("Rezervacija je spremljena!", "success")
         return redirect(url_for("main.moja_sisanja"))
 
-    # GET: prikaz forme
     return render_template(
         "usluge.html",
         frizeri=FRIZERI,
@@ -145,11 +132,6 @@ def usluge():
     )
 
 
-
-# --------------------------------------
-# Moja šišanja (pregled rezervacija)
-# --------------------------------------
-
 @bp.route("/moja-sisanja")
 @login_required
 def moja_sisanja():
@@ -158,7 +140,6 @@ def moja_sisanja():
         flash("Baza nije inicijalizirana (RESERVATIONS).", "danger")
         return redirect(url_for("main.index"))
 
-    # samo moje rezervacije
     res = list(
         reservations.find({"user_id": current_user.id}).sort("date", 1)
     )
@@ -178,10 +159,6 @@ def moja_sisanja():
 
     return render_template("moja_sisanja.html", items=items)
 
-
-# --------------------------------------
-# Registracija
-# --------------------------------------
 
 @bp.route("/register", methods=["GET", "POST"])
 @limiter.limit("3 per minute")
@@ -226,26 +203,44 @@ def register():
         if has_error:
             return redirect(url_for("main.register"))
 
-        users.insert_one(
-            {
-                "full_name": full_name,
-                "email": email,
-                "phone": phone,
-                "password": password,  # (za projekt OK, inače hashirati)
-                "photo_id": None,
-                "created_at": datetime.now(),
-            }
+        result = users.insert_one({
+            "full_name": full_name,
+            "email": email,
+            "phone": phone,
+            "password": password, 
+            "photo_id": None,
+            "created_at": datetime.now(),
+            "email_verified": False,  
+            "role": "user",            
+        })
+
+        s = URLSafeTimedSerializer(current_app.config["SECRET_KEY"])
+        token = s.dumps(email, salt="email-confirm")
+
+        confirm_url = url_for("main.confirm_email", token=token, _external=True)
+
+        msg = Message(
+            subject="Potvrda registracije - Frizerski salon",
+            recipients=[email],
+        )
+        msg.body = (
+            f"Bok {full_name},\n\n"
+            f"Hvala na registraciji u naš frizerski salon.\n"
+            f"Za potvrdu svog emaila klikni na sljedeći link:\n{confirm_url}\n\n"
+            f"Link vrijedi 1 sat.\n\n"
+            f"Lijep pozdrav!"
         )
 
-        flash("Registracija uspješna! Sad se možete prijaviti.", "success")
+        try:
+            mail.send(msg)
+            flash("Registracija uspješna! Provjerite email za verifikaciju.", "success")
+        except Exception:
+            flash("Registracija uspješna, ali slanje verifikacijskog emaila nije uspjelo.", "warning")
+
         return redirect(url_for("main.login"))
 
     return render_template("register.html")
 
-
-# --------------------------------------
-# Login / Logout
-# --------------------------------------
 
 @bp.route("/login", methods=["GET", "POST"])
 @limiter.limit("5 per minute")
@@ -263,20 +258,22 @@ def login():
         if not doc:
             flash("Pogrešan email ili lozinka.", "danger")
             return redirect(url_for("main.login"))
+        
+        if not doc.get("email_verified"):
+            flash("Email nije verificiran. Provjerite email ili zatražite novi verifikacijski link.", "warning")
+            return redirect(url_for("main.resend_verification"))
+
 
         user_obj = User(doc)
-        login_user(user_obj)
+        login_user(user_obj, remember=True)
 
         flash("Uspješno ste prijavljeni.", "success")
 
-        # -----------------------------
-        # Ako postoji pending rezervacija u sessionu – spremi je sada
-        # -----------------------------
+
         pending = session.pop("pending_reservation", None)
         if pending:
             reservations = current_app.config.get("RESERVATIONS")
             if reservations is not None:
-                # još jedna sigurnosna provjera – je li termin već zauzet
                 already = reservations.find_one(
                     {
                         "barber": pending["barber"],
@@ -304,9 +301,6 @@ def login():
                     reservations.insert_one(doc)
                     flash("Vaša ranije odabrana rezervacija je spremljena.", "success")
 
-        # -----------------------------
-        # Redirect na next ili fallback
-        # -----------------------------
         next_page = request.args.get("next") or request.form.get("next")
         if next_page:
             return redirect(next_page)
@@ -314,6 +308,38 @@ def login():
         return redirect(url_for("main.index"))
 
     return render_template("login.html")
+
+
+@bp.route("/confirm/<token>")
+def confirm_email(token):
+    users = current_app.config.get("USERS")
+    if users is None:
+        flash("Baza nije inicijalizirana (USERS).", "danger")
+        return redirect(url_for("main.index"))
+
+    s = URLSafeTimedSerializer(current_app.config["SECRET_KEY"])
+
+    try:
+        email = s.loads(token, salt="email-confirm", max_age=3600)  # 1 sat
+    except Exception:
+        flash("Link za verifikaciju je nevažeći ili je istekao.", "danger")
+        return redirect(url_for("main.login"))
+
+    # pronađi korisnika
+    user = users.find_one({"email": email})
+    if not user:
+        flash("Korisnik ne postoji.", "danger")
+        return redirect(url_for("main.register"))
+
+    if user.get("email_verified"):
+        flash("Email je već potvrđen.", "info")
+        return redirect(url_for("main.login"))
+
+    # ažuriraj status
+    users.update_one({"_id": user["_id"]}, {"$set": {"email_verified": True}})
+
+    flash("Email uspješno potvrđen! Sada se možete prijaviti.", "success")
+    return redirect(url_for("main.login"))
 
 
 
@@ -326,9 +352,6 @@ def logout():
     return redirect(url_for("main.index"))
 
 
-# --------------------------------------
-# Korisnički račun
-# --------------------------------------
 
 @bp.route("/account", methods=["GET", "POST"])
 @login_required
@@ -339,7 +362,6 @@ def account():
         flash("Baza nije inicijalizirana (USERS/FS).", "danger")
         return redirect(url_for("main.index"))
 
-    # učitaj svježe podatke iz baze
     user_doc = users.find_one({"_id": ObjectId(current_user.id)})
     if not user_doc:
         flash("Korisnik nije pronađen.", "danger")
@@ -373,9 +395,6 @@ def account():
     return render_template("account.html", user=user_doc)
 
 
-# --------------------------------------
-# Slika korisnika
-# --------------------------------------
 
 @bp.route("/photo/<id>")
 def photo(id):
@@ -391,9 +410,6 @@ def photo(id):
     return send_file(photo, mimetype="image/jpeg")
 
 
-# --------------------------------------
-# Otkazivanje rezervacije
-# --------------------------------------
 
 @bp.route("/rezervacije/<id>/cancel", methods=["POST"])
 @login_required
@@ -403,7 +419,6 @@ def cancel_reservation(id):
         flash("Baza nije inicijalizirana (RESERVATIONS).", "danger")
         return redirect(url_for("main.moja_sisanja"))
 
-    # current_user dolazi iz flask_login
     u = current_user
     if not u.is_authenticated:
         flash("Prijavite se za otkazivanje rezervacije.", "info")
@@ -418,7 +433,6 @@ def cancel_reservation(id):
     if not res:
         abort(404)
 
-    # sigurnost: dozvoli brisanje samo vlastite rezervacije
     if str(res.get("user_id")) != str(u.id):
         abort(403)
 
@@ -426,3 +440,63 @@ def cancel_reservation(id):
     flash("Rezervacija uspješno otkazana.", "success")
     return redirect(url_for("main.moja_sisanja"))
 
+@bp.route("/resend-verification", methods=["GET", "POST"])
+def resend_verification():
+    users = current_app.config.get("USERS")
+    if users is None:
+        flash("Baza nije inicijalizirana (USERS).", "danger")
+        return redirect(url_for("main.index"))
+
+    if request.method == "POST":
+        email = (request.form.get("email") or "").strip().lower()
+        user = users.find_one({"email": email})
+
+        if not user:
+            flash("Ne postoji korisnik s tim emailom.", "warning")
+            return redirect(url_for("main.resend_verification"))
+
+        if user.get("email_verified"):
+            flash("Ovaj email je već verificiran. Možete se prijaviti.", "info")
+            return redirect(url_for("main.login"))
+
+        s = URLSafeTimedSerializer(current_app.config["SECRET_KEY"])
+        token = s.dumps(email, salt="email-confirm")
+        confirm_url = url_for("main.confirm_email", token=token, _external=True)
+
+        msg = Message(
+            subject="Ponovni verifikacijski email - Frizerski salon",
+            recipients=[email],
+        )
+        msg.body = (
+            f"Bok {user.get('full_name', '')},\n\n"
+            f"Evo novog verifikacijskog linka:\n{confirm_url}\n\n"
+            f"Link vrijedi 1 sat.\n\n"
+            f"Lijep pozdrav!"
+        )
+
+        try:
+            mail.send(msg)
+            flash("Novi verifikacijski email je poslan.", "success")
+        except Exception:
+            flash("Slanje verifikacijskog emaila nije uspjelo.", "danger")
+
+        return redirect(url_for("main.login"))
+
+    return render_template("resend_verification.html")
+
+
+@bp.route("/test-mail")
+def test_mail():
+    from flask_mail import Message
+    from .. import mail
+
+    msg = Message(
+        subject="Test Mailtrap",
+        recipients=["test@example.com"],
+        body="Ovo je test mail iz frizerskog salona. :)"
+    )
+    try:
+        mail.send(msg)
+        return "OK — mail poslan! Pogledaj Mailtrap inbox."
+    except Exception as e:
+        return f"Greška pri slanju: {e}"

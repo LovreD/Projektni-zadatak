@@ -6,6 +6,14 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_login import LoginManager, UserMixin, current_user
 from bson import ObjectId
+from flask_mail import Mail, Message
+from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
+import os
+from flask_login import UserMixin
+from flask import current_app
+from dotenv import load_dotenv
+
+
 
 
 limiter = Limiter(
@@ -13,8 +21,10 @@ limiter = Limiter(
     default_limits=["200 per day", "50 per hour"] 
 )
 
+mail = Mail()
 
 def create_app():
+    load_dotenv()   # <-- ovo učita .env
     app = Flask(__name__, template_folder="templates")
     app.config["SECRET_KEY"] = "tajni_kljuc"
 
@@ -37,6 +47,16 @@ def create_app():
     login_manager.init_app(app)
 
     limiter.init_app(app)
+
+    app.config["MAIL_SERVER"] = os.getenv("MAIL_SERVER")
+    app.config["MAIL_PORT"] = int(os.getenv("MAIL_PORT", 587))
+    app.config["MAIL_USERNAME"] = os.getenv("MAIL_USERNAME")
+    app.config["MAIL_PASSWORD"] = os.getenv("MAIL_PASSWORD")
+    app.config["MAIL_USE_TLS"] = os.getenv("MAIL_USE_TLS") == "True"
+    app.config["MAIL_USE_SSL"] = os.getenv("MAIL_USE_SSL") == "True"
+    app.config["MAIL_DEFAULT_SENDER"] = os.getenv("MAIL_DEFAULT_SENDER")
+
+    mail.init_app(app)
 
     from .main import bp as main_bp
     app.register_blueprint(main_bp)
@@ -61,11 +81,13 @@ login_manager = LoginManager()
 login_manager.login_view = "main.login"  # ako ti je login ruta main.login
 
 
+
+
 class User(UserMixin):
     def __init__(self, data):
         self.data = data
-        # Flask-Login koristi svojstvo "id"
         self.id = str(data["_id"])
+        self.email_verified = data.get("email_verified", False)
 
     @property
     def full_name(self):
@@ -76,7 +98,6 @@ class User(UserMixin):
         return self.data.get("email") or ""
     
 
-from flask import current_app
 
 @login_manager.user_loader
 def load_user(user_id):
