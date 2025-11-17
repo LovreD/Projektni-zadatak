@@ -97,8 +97,8 @@ login_manager.login_view = "main.login"  # ako ti je login ruta main.login
 class User(UserMixin):
     def __init__(self, data):
         self.data = data
+        # Flask-Login koristi ovo svojstvo za identifikaciju usera
         self.id = str(data["_id"])
-        self.email_verified = data.get("email_verified", False)
 
     @property
     def full_name(self):
@@ -107,7 +107,15 @@ class User(UserMixin):
     @property
     def email(self):
         return self.data.get("email") or ""
-    
+
+    @property
+    def email_verified(self):
+        return self.data.get("email_verified", False)
+
+    @property
+    def role(self):
+        return self.data.get("role", "user")
+
 
 
 @login_manager.user_loader

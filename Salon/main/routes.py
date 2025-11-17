@@ -19,6 +19,10 @@ from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from .. import mail
 from flask_mail import Message
 from flask_login import UserMixin
+from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
+from flask_mail import Message
+from .. import mail
+
 
 
 @bp.route("/")
@@ -203,22 +207,25 @@ def register():
         if has_error:
             return redirect(url_for("main.register"))
 
+        # 1) upišemo usera u bazu
         result = users.insert_one({
             "full_name": full_name,
             "email": email,
             "phone": phone,
-            "password": password, 
+            "password": password,  # ostavljamo plain text jer ti tako ide po predavanjima
             "photo_id": None,
             "created_at": datetime.now(),
-            "email_verified": False,  
-            "role": "user",            
+            "email_verified": False,   # još nije potvrđen
+            "role": "user",            # za kasnije role/admin
         })
 
+        # 2) generiramo verifikacijski token
         s = URLSafeTimedSerializer(current_app.config["SECRET_KEY"])
         token = s.dumps(email, salt="email-confirm")
 
         confirm_url = url_for("main.confirm_email", token=token, _external=True)
 
+        # 3) složimo mail
         msg = Message(
             subject="Potvrda registracije - Frizerski salon",
             recipients=[email],
@@ -234,12 +241,58 @@ def register():
         try:
             mail.send(msg)
             flash("Registracija uspješna! Provjerite email za verifikaciju.", "success")
-        except Exception:
-            flash("Registracija uspješna, ali slanje verifikacijskog emaila nije uspjelo.", "warning")
+        except Exception as e:
+            # ako slanje maila padne, korisnik je svejedno registriran
+            flash(
+                "Registracija uspješna, ali slanje verifikacijskog emaila nije uspjelo.",
+                "warning",
+            )
 
         return redirect(url_for("main.login"))
 
-    return render_template("register.html")
+    # GET – samo prikažemo formu
+    return render_template("auth/register.html")
+
+
+@bp.route("/confirm/<token>")
+def confirm_email(token):
+    users = current_app.config.get("USERS")
+    if users is None:
+        flash("Baza nije inicijalizirana (USERS).", "danger")
+        return redirect(url_for("main.index"))
+
+    s = URLSafeTimedSerializer(current_app.config["SECRET_KEY"])
+
+    try:
+        # pokušaj dekodirati email iz tokena (vrijedi max 1h = 3600s)
+        email = s.loads(token, salt="email-confirm", max_age=3600)
+    except SignatureExpired:
+        flash("Verifikacijski link je istekao. Zatražite novi.", "warning")
+        return redirect(url_for("main.login"))
+    except BadSignature:
+        flash("Neispravan verifikacijski link.", "danger")
+        return redirect(url_for("main.index"))
+
+    # nađi usera po emailu
+    user = users.find_one({"email": email})
+    if not user:
+        flash("Korisnik s ovim emailom ne postoji.", "danger")
+        return redirect(url_for("main.index"))
+
+    if user.get("email_verified"):
+        flash("Email je već potvrđen. Možete se prijaviti.", "info")
+        return redirect(url_for("main.login"))
+
+    # postavi email_verified na True
+    users.update_one(
+        {"_id": user["_id"]},
+        {"$set": {"email_verified": True}}
+    )
+
+    flash("Email je uspješno potvrđen. Sad se možete prijaviti.", "success")
+    return redirect(url_for("main.login"))
+
+
 
 
 @bp.route("/login", methods=["GET", "POST"])
@@ -258,89 +311,24 @@ def login():
         if not doc:
             flash("Pogrešan email ili lozinka.", "danger")
             return redirect(url_for("main.login"))
-        
-        if not doc.get("email_verified"):
-            flash("Email nije verificiran. Provjerite email ili zatražite novi verifikacijski link.", "warning")
-            return redirect(url_for("main.resend_verification"))
 
+        # ➜ ovdje provjeravamo je li email potvrđen
+        if not doc.get("email_verified", False):
+            flash("Morate prvo potvrditi email. Provjerite svoj email sandučić.", "warning")
+            return redirect(url_for("main.login"))
 
         user_obj = User(doc)
-        login_user(user_obj, remember=True)
+        login_user(user_obj)
+
+        # ako imaš 'next' param nakon login_required redirecta
+        next_url = request.args.get("next")
+        if next_url:
+            return redirect(next_url)
 
         flash("Uspješno ste prijavljeni.", "success")
-
-
-        pending = session.pop("pending_reservation", None)
-        if pending:
-            reservations = current_app.config.get("RESERVATIONS")
-            if reservations is not None:
-                already = reservations.find_one(
-                    {
-                        "barber": pending["barber"],
-                        "date": pending["date"],
-                        "time": pending["time"],
-                    }
-                )
-                if already:
-                    flash(
-                        "Termin koji ste ranije odabrali u međuvremenu je zauzet. Odaberite drugi termin.",
-                        "warning",
-                    )
-                else:
-                    username = current_user.full_name or current_user.email or "demo"
-                    doc = {
-                        "user_id": current_user.id,
-                        "user_name": username,
-                        "barber": pending["barber"],
-                        "services": pending["services"],
-                        "date": pending["date"],
-                        "time": pending["time"],
-                        "total_price": pending["total_price"],
-                        "created_at": datetime.now(),
-                    }
-                    reservations.insert_one(doc)
-                    flash("Vaša ranije odabrana rezervacija je spremljena.", "success")
-
-        next_page = request.args.get("next") or request.form.get("next")
-        if next_page:
-            return redirect(next_page)
-
         return redirect(url_for("main.index"))
 
-    return render_template("login.html")
-
-
-@bp.route("/confirm/<token>")
-def confirm_email(token):
-    users = current_app.config.get("USERS")
-    if users is None:
-        flash("Baza nije inicijalizirana (USERS).", "danger")
-        return redirect(url_for("main.index"))
-
-    s = URLSafeTimedSerializer(current_app.config["SECRET_KEY"])
-
-    try:
-        email = s.loads(token, salt="email-confirm", max_age=3600)  # 1 sat
-    except Exception:
-        flash("Link za verifikaciju je nevažeći ili je istekao.", "danger")
-        return redirect(url_for("main.login"))
-
-    # pronađi korisnika
-    user = users.find_one({"email": email})
-    if not user:
-        flash("Korisnik ne postoji.", "danger")
-        return redirect(url_for("main.register"))
-
-    if user.get("email_verified"):
-        flash("Email je već potvrđen.", "info")
-        return redirect(url_for("main.login"))
-
-    # ažuriraj status
-    users.update_one({"_id": user["_id"]}, {"$set": {"email_verified": True}})
-
-    flash("Email uspješno potvrđen! Sada se možete prijaviti.", "success")
-    return redirect(url_for("main.login"))
-
+    return render_template("auth/login.html")
 
 
 
@@ -392,7 +380,7 @@ def account():
         flash("Podaci uspješno ažurirani.", "success")
         return redirect(url_for("main.account"))
 
-    return render_template("account.html", user=user_doc)
+    return render_template("auth/account.html", user=user_doc)
 
 
 
@@ -482,7 +470,7 @@ def resend_verification():
 
         return redirect(url_for("main.login"))
 
-    return render_template("resend_verification.html")
+    return render_template("auth/resend_verification.html")
 
 
 @bp.route("/test-mail")
