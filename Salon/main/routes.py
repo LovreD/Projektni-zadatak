@@ -13,7 +13,18 @@ from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 from flask_mail import Message
 from .. import mail
 from .forms import ReservationForm
+from functools import wraps
 
+
+
+def admin_required(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        # korisnik mora biti prijavljen i imati rolu "admin"
+        if (not current_user.is_authenticated) or (current_user.role != "admin"):
+            abort(403)
+        return f(*args, **kwargs)
+    return wrapper
 
 
 
@@ -468,3 +479,29 @@ def test_mail():
         return "OK — mail poslan! Pogledaj Mailtrap inbox."
     except Exception as e:
         return f"Greška pri slanju: {e}"
+
+
+@bp.route("/admin")
+@login_required
+@admin_required
+def admin_dashboard():
+    users_coll = current_app.config.get("USERS")
+    reservations = current_app.config.get("RESERVATIONS")
+
+    if users_coll is None or reservations is None:
+        flash("Baza nije inicijalizirana (USERS/RESERVATIONS).", "danger")
+        return redirect(url_for("main.index"))
+
+    # svi korisnici
+    users = list(users_coll.find().sort("created_at", -1))
+
+    # sve rezervacije, sortirane po datumu i vremenu
+    res = list(
+        reservations.find().sort([("date", 1), ("time", 1)])
+    )
+
+    return render_template(
+        "admin/dashboard.html",
+        users=users,
+        reservations=res,
+    )

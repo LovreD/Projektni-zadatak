@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}Admin - Frizerski salon{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <h1 class="mb-4">Admin panel</h1>
+
+    <p class="text-muted">
+        Prijavljeni ste kao: <strong>{{ current_user.full_name or current_user.email }}</strong>
+        (rola: <strong>{{ current_user.role }}</strong>)
+    </p>
+
+    <hr>
+
+    <h3>Korisnici</h3>
+    <div class="table-responsive mb-4">
+        <table class="table table-striped table-sm align-middle">
+            <thead>
+                <tr>
+                    <th>Ime i prezime</th>
+                    <th>Email</th>
+                    <th>Telefon</th>
+                    <th>Rola</th>
+                    <th>Email verificiran</th>
+                    <th>Registriran</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in users %}
+                <tr>
+                    <td>{{ u.full_name or u.name or "" }}</td>
+                    <td>{{ u.email }}</td>
+                    <td>{{ u.phone }}</td>
+                    <td>{{ u.role or "user" }}</td>
+                    <td>
+                        {% if u.email_verified %}
+                            <span class="badge bg-success">Da</span>
+                        {% else %}
+                            <span class="badge bg-secondary">Ne</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {{ u.created_at.strftime("%Y-%m-%d") if u.created_at else "" }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <hr>
+
+    <h3>Rezervacije</h3>
+    {% if reservations %}
+    <div class="table-responsive">
+        <table class="table table-striped table-sm align-middle">
+            <thead>
+                <tr>
+                    <th>Korisnik</th>
+                    <th>Frizer</th>
+                    <th>Usluge</th>
+                    <th>Datum</th>
+                    <th>Termin</th>
+                    <th>Cijena</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in reservations %}
+                <tr>
+                    <td>{{ r.user_name or "" }}</td>
+                    <td>{{ r.barber }}</td>
+                    <td>
+                        {% if r.services %}
+                            {{ ", ".join(r.services) }}
+                        {% endif %}
+                    </td>
+                    <td>{{ r.date }}</td>
+                    <td>{{ r.time }}</td>
+                    <td>{{ r.total_price }} €</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="text-muted">Nema rezervacija.</p>
+    {% endif %}
+</div>
+{% endblock %}
