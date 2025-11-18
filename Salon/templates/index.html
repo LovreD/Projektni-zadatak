@@ -10,3 +10,42 @@
   </a>
 </div>
 {% endblock %}
+
+
+<section class="py-5 bg-light">
+    <div class="container">
+        <h2 class="text-center mb-5">Naši radovi</h2>
+
+        <div class="row g-4">
+
+            <div class="col-md-3 col-sm-6">
+                <div class="card shadow-sm">
+                    <img src="{{ url_for('static', filename='/img/radovi/rad1.jpeg') }}" 
+                         class="card-img-top" alt="Rad 1" style="height:250px; object-fit:cover;">
+                </div>
+            </div>
+
+            <div class="col-md-3 col-sm-6">
+                <div class="card shadow-sm">
+                    <img src="{{ url_for('static', filename='img/radovi/rad2.jpeg') }}" 
+                         class="card-img-top" alt="Rad 2" style="height:250px; object-fit:cover;">
+                </div>
+            </div>
+
+            <div class="col-md-3 col-sm-6">
+                <div class="card shadow-sm">
+                    <img src="{{ url_for('static', filename='img/radovi/rad3.jpeg') }}" 
+                         class="card-img-top" alt="Rad 3" style="height:250px; object-fit:cover;">
+                </div>
+            </div>
+
+            <div class="col-md-3 col-sm-6">
+                <div class="card shadow-sm">
+                    <img src="{{ url_for('static', filename='img/radovi/rad4.jpeg') }}" 
+                         class="card-img-top" alt="Rad 4" style="height:250px; object-fit:cover;">
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>
