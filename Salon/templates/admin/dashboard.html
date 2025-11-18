@@ -24,6 +24,7 @@
                     <th>Rola</th>
                     <th>Email verificiran</th>
                     <th>Registriran</th>
+                    <th>Akcije</th>
                 </tr>
             </thead>
             <tbody>
@@ -43,6 +44,16 @@
                     <td>
                         {{ u.created_at.strftime("%Y-%m-%d") if u.created_at else "" }}
                     </td>
+                    <td>
+                        <form method="post"
+                                action="{{ url_for('main.admin_delete_user', id=u._id) }}"
+                                onsubmit="return confirm('Jeste li sigurni da želite obrisati ovog korisnika? Ovo može obrisati i njegove rezervacije.');">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                Ukloni
+                            </button>
+                        </form>
+                    </td>
+
                 </tr>
                 {% endfor %}
             </tbody>
@@ -63,23 +74,34 @@
                     <th>Datum</th>
                     <th>Termin</th>
                     <th>Cijena</th>
+                    <th>Akcije</th>
                 </tr>
             </thead>
             <tbody>
                 {% for r in reservations %}
                 <tr>
-                    <td>{{ r.user_name or "" }}</td>
-                    <td>{{ r.barber }}</td>
-                    <td>
-                        {% if r.services %}
-                            {{ ", ".join(r.services) }}
-                        {% endif %}
-                    </td>
-                    <td>{{ r.date }}</td>
-                    <td>{{ r.time }}</td>
-                    <td>{{ r.total_price }} €</td>
+                <td>{{ r.user_name or "" }}</td>
+                <td>{{ r.barber }}</td>
+                <td>
+                    {% if r.services %}
+                        {{ ", ".join(r.services) }}
+                    {% endif %}
+                </td>
+                <td>{{ r.date }}</td>
+                <td>{{ r.time }}</td>
+                <td>{{ r.total_price }} €</td>
+                <td>
+                    <form method="post"
+                        action="{{ url_for('main.admin_delete_reservation', id=r._id) }}"
+                        onsubmit="return confirm('Jeste li sigurni da želite obrisati ovu rezervaciju?');">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                        Ukloni
+                    </button>
+                     </form>
+                </td>
                 </tr>
                 {% endfor %}
+
             </tbody>
         </table>
     </div>

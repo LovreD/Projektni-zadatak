@@ -505,3 +505,52 @@ def admin_dashboard():
         users=users,
         reservations=res,
     )
+
+
+@bp.post("/admin/users/<id>/delete")
+@login_required
+@admin_required
+def admin_delete_user(id):
+    users_coll = current_app.config.get("USERS")
+    reservations = current_app.config.get("RESERVATIONS")
+
+    if users_coll is None:
+        flash("Baza nije inicijalizirana (USERS).", "danger")
+        return redirect(url_for("main.admin_dashboard"))
+
+    try:
+        oid = ObjectId(id)
+    except Exception:
+        flash("Neispravan ID korisnika.", "danger")
+        return redirect(url_for("main.admin_dashboard"))
+
+    # obriši korisnika
+    users_coll.delete_one({"_id": oid})
+
+    # opcionalno: obriši i njegove rezervacije
+    if reservations is not None:
+        reservations.delete_many({"user_id": str(oid)})
+
+    flash("Korisnik (i njegove rezervacije) su obrisani.", "success")
+    return redirect(url_for("main.admin_dashboard"))
+
+
+@bp.post("/admin/reservations/<id>/delete")
+@login_required
+@admin_required
+def admin_delete_reservation(id):
+    reservations = current_app.config.get("RESERVATIONS")
+
+    if reservations is None:
+        flash("Baza nije inicijalizirana (RESERVATIONS).", "danger")
+        return redirect(url_for("main.admin_dashboard"))
+
+    try:
+        oid = ObjectId(id)
+    except Exception:
+        flash("Neispravan ID rezervacije.", "danger")
+        return redirect(url_for("main.admin_dashboard"))
+
+    reservations.delete_one({"_id": oid})
+    flash("Rezervacija je obrisana.", "success")
+    return redirect(url_for("main.admin_dashboard"))
