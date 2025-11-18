@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: frizerski-salon
+    env: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn app:app"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11
+      - key: SECRET_KEY
+        generateValue: true
+      - key: MONGO_URI
+        sync: false

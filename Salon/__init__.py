@@ -37,8 +37,10 @@ def create_app():
 
     Bootstrap5(app)
 
-    client = MongoClient("mongodb://localhost:27017/")
+    MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
+    client = MongoClient(MONGO_URI)
     db = client["frizerski_salon"]
+
     app.config["DB"] = db
     app.config["RESERVATIONS"] = db["reservations"]
 
