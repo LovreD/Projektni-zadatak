@@ -4,7 +4,6 @@ from wtforms import RadioField, SelectField, DateField, SubmitField, BooleanFiel
 from wtforms.validators import DataRequired
 
 
-# Moraju odgovarati FRIZERI i USLUGE iz routes.py
 BARBERS = [
     ("Marija", "Marija"),
     ("Lovre", "Lovre"),
@@ -12,7 +11,6 @@ BARBERS = [
     ("Ivan", "Ivan"),
 ]
 
-# key mora biti isti kao u USLUGE u routes.py
 SERVICES = [
     ("classic", "Klasično šišanje (20 min, 12 €)"),
     ("fade",   "Fade šišanje (20 min, 15 €)"),
@@ -35,7 +33,6 @@ class ReservationForm(FlaskForm):
         validators=[DataRequired()]
     )
 
-    # jedna glavna usluga
     service = SelectField(
         "Usluga",
         choices=SERVICES,

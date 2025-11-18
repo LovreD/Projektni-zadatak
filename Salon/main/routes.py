@@ -78,7 +78,6 @@ def usluge():
             flash("Molimo odaberite frizera, uslugu, datum i termin.", "warning")
             return redirect(url_for("main.usluge"))
 
-        # Zauzetost
         already = reservations.find_one({
             "barber": barber,
             "date": day,
@@ -98,7 +97,6 @@ def usluge():
             total_price += WASH_PRICE
             services_list.append("Pranje kose")
 
-        # korisnik
         if current_user.is_authenticated:
             user_id = current_user.id
             username = current_user.full_name
@@ -204,25 +202,22 @@ def register():
         if has_error:
             return redirect(url_for("main.register"))
 
-        # 1) upišemo usera u bazu
         result = users.insert_one({
             "full_name": full_name,
             "email": email,
             "phone": phone,
-            "password": password,  # ostavljamo plain text jer ti tako ide po predavanjima
+            "password": password,  
             "photo_id": None,
             "created_at": datetime.now(),
-            "email_verified": False,   # još nije potvrđen
-            "role": "user",            # za kasnije role/admin
+            "email_verified": False,   
+            "role": "user",           
         })
 
-        # 2) generiramo verifikacijski token
         s = URLSafeTimedSerializer(current_app.config["SECRET_KEY"])
         token = s.dumps(email, salt="email-confirm")
 
         confirm_url = url_for("main.confirm_email", token=token, _external=True)
 
-        # 3) složimo mail
         msg = Message(
             subject="Potvrda registracije - Frizerski salon",
             recipients=[email],
@@ -247,7 +242,6 @@ def register():
 
         return redirect(url_for("main.login"))
 
-    # GET – samo prikažemo formu
     return render_template("auth/register.html")
 
 
@@ -261,7 +255,6 @@ def confirm_email(token):
     s = URLSafeTimedSerializer(current_app.config["SECRET_KEY"])
 
     try:
-        # pokušaj dekodirati email iz tokena (vrijedi max 1h = 3600s)
         email = s.loads(token, salt="email-confirm", max_age=3600)
     except SignatureExpired:
         flash("Verifikacijski link je istekao. Zatražite novi.", "warning")
@@ -270,7 +263,6 @@ def confirm_email(token):
         flash("Neispravan verifikacijski link.", "danger")
         return redirect(url_for("main.index"))
 
-    # nađi usera po emailu
     user = users.find_one({"email": email})
     if not user:
         flash("Korisnik s ovim emailom ne postoji.", "danger")
@@ -280,7 +272,6 @@ def confirm_email(token):
         flash("Email je već potvrđen. Možete se prijaviti.", "info")
         return redirect(url_for("main.login"))
 
-    # postavi email_verified na True
     users.update_one(
         {"_id": user["_id"]},
         {"$set": {"email_verified": True}}
@@ -492,7 +483,6 @@ def admin_dashboard():
         flash("Baza nije inicijalizirana (USERS/RESERVATIONS).", "danger")
         return redirect(url_for("main.index"))
 
-    # svi korisnici
     users = list(users_coll.find().sort("created_at", -1))
 
     # sve rezervacije, sortirane po datumu i vremenu
@@ -524,10 +514,8 @@ def admin_delete_user(id):
         flash("Neispravan ID korisnika.", "danger")
         return redirect(url_for("main.admin_dashboard"))
 
-    # obriši korisnika
     users_coll.delete_one({"_id": oid})
 
-    # opcionalno: obriši i njegove rezervacije
     if reservations is not None:
         reservations.delete_many({"user_id": str(oid)})
 
