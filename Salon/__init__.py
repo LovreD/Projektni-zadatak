@@ -16,6 +16,7 @@ from dotenv import load_dotenv
 
 
 
+
 limiter = Limiter(
     key_func=get_remote_address,
     default_limits=["200 per day", "50 per hour"] 
@@ -24,7 +25,7 @@ limiter = Limiter(
 mail = Mail()
 
 def create_app():
-    load_dotenv()   # <-- ovo učita .env
+    load_dotenv() 
     app = Flask(__name__, template_folder="templates")
     app.config["SECRET_KEY"] = "tajni_kljuc"
 
@@ -89,7 +90,7 @@ def create_app():
     return app
 
 login_manager = LoginManager()
-login_manager.login_view = "main.login"  # ako ti je login ruta main.login
+login_manager.login_view = "main.login" 
 
 
 
@@ -97,7 +98,6 @@ login_manager.login_view = "main.login"  # ako ti je login ruta main.login
 class User(UserMixin):
     def __init__(self, data):
         self.data = data
-        # Flask-Login koristi ovo svojstvo za identifikaciju usera
         self.id = str(data["_id"])
 
     @property
@@ -120,7 +120,6 @@ class User(UserMixin):
 
 @login_manager.user_loader
 def load_user(user_id):
-    """Funkcija koju Flask-Login koristi da iz sessiona učita korisnika iz baze."""
     users = current_app.config.get("USERS")
     if users is None:
         return None

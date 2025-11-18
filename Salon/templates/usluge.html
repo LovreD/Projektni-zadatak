@@ -1,88 +1,70 @@
 {% extends "base.html" %}
-{% block title %}Usluge{% endblock %}
+
+{% block title %}Usluge - Frizerski salon{% endblock %}
 
 {% block content %}
-<h1 class="mb-4">Rezervacija termina</h1>
+<div class="container py-5">
+    <h1 class="mb-4">Rezervacija termina</h1>
 
-<form method="POST">
-  <div class="row">
-    <div class="col-md-4 mb-4">
-<h4 class="mb-3">Odaberite frizera</h4>
+    <form method="POST">
 
-{% for name in frizeri %}
-<div class="form-check mb-2">
-  <input
-    type="radio"
-    class="form-check-input"
-    name="frizer"
-    id="frizer-{{ loop.index }}"
-    value="{{ name }}">
-  <label class="form-check-label" for="frizer-{{ loop.index }}">
-    {{ name }}
-  </label>
+        <!-- 1. Odabir frizera -->
+        <div class="mb-4">
+            <label class="form-label fw-bold">Odaberite frizera:</label>
+
+            <div class="row g-3">
+                {% for ime in frizeri %}
+                <div class="col-md-3 text-center">
+                    <label class="border rounded p-2 d-block">
+                        <img src="{{ url_for('static', filename='img/barbers/' ~ ime|lower ~ '.jpeg') }}"
+                             class="img-fluid rounded mb-2"
+                             style="max-height: 140px; object-fit: cover;"
+                             alt="{{ ime }}">
+                        <br>
+                        <input type="radio" name="frizer" value="{{ ime }}" required>
+                        {{ ime }}
+                    </label>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- 2. Glavna usluga -->
+        <div class="mb-4">
+            <label class="form-label fw-bold" for="service">Odaberite uslugu:</label>
+            <select name="service" id="service" class="form-select" required>
+                <option value="">-- Odaberite uslugu --</option>
+                {% for key, label, dur, price in usluge %}
+                    <option value="{{ key }}">{{ label }} ({{ dur }} min, {{ price }} €)</option>
+                {% endfor %}
+            </select>
+
+            <div class="form-check mt-2">
+                <input type="checkbox" class="form-check-input" id="wash" name="wash">
+                <label class="form-check-label" for="wash">Pranje kose (+ {{ wash_price }} €)</label>
+            </div>
+        </div>
+
+        <!-- 3. Datum -->
+        <div class="mb-4">
+            <label class="form-label fw-bold" for="datum">Datum:</label>
+            <input type="date" class="form-control" name="datum" id="datum" required min="{{ today }}">
+        </div>
+
+        <!-- 4. Termin -->
+        <div class="mb-4">
+            <label class="form-label fw-bold" for="termin">Termin:</label>
+            <select class="form-select" name="termin" id="termin" required>
+                <option value="">-- Odaberite termin --</option>
+                {% for t in timeslots %}
+                    <option value="{{ t }}">{{ t }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Rezerviraj termin</button>
+
+    </form>
 </div>
-{% endfor %}
-
-
-    </div>
-
-    <div class="col-md-4 mb-4">
-      <h4 class="mb-3">Odaberite uslugu</h4>
-
-      {% for key, label, dur, price in usluge %}
-      <div class="form-check mb-2">
-        <input
-          class="form-check-input"
-          type="radio"
-          name="service"
-          id="service-{{ key }}"
-          value="{{ key }}">
-        <label class="form-check-label" for="service-{{ key }}">
-          {{ label }} ({{ dur }} min, {{ price }} €)
-        </label>
-      </div>
-      {% endfor %}
-
-      <div class="form-check mt-3">
-        <input
-          class="form-check-input"
-          type="checkbox"
-          name="wash"
-          id="wash">
-        <label class="form-check-label" for="wash">
-          Pranje kose (+{{ wash_price }} €)
-        </label>
-      </div>
-    </div>
-
-    <div class="col-md-4 mb-4">
-      <h4 class="mb-3">Odaberite datum i termin</h4>
-
-      <div class="mb-3">
-        <label class="form-label" for="datum">Datum</label>
-        <input
-          type="date"
-          id="datum"
-          name="datum"
-          class="form-control"
-          min="{{ today }}">
-      </div>
-
-      <div class="mb-3">
-        <label class="form-label" for="termin">Termin</label>
-        <select id="termin" name="termin" class="form-select">
-          <option value="">Odaberite termin</option>
-          {% for t in timeslots %}
-          <option value="{{ t }}">{{ t }}</option>
-          {% endfor %}
-        </select>
-      </div>
-
-      <button type="submit" class="btn btn-primary w-100 mt-3">
-        Rezerviraj termin
-      </button>
-    </div>
-
-  </div>
-</form>
 {% endblock %}
+
