@@ -1,6 +1,6 @@
 README.md — Frizerski salon Malura (Flask + MongoDB)
 
-🎉 Frizerski salon – Web Aplikacija
+🎉 Frizerski salon Malura – Web Aplikacija
 
 Ovo je projekt izrađen za kolegij Programiranje za web.
 Aplikacija omogućuje korisnicima pregled frizera, odabir usluge, rezervaciju termina, upravljanje korisničkim računom i pregled vlastitih rezervacija.
