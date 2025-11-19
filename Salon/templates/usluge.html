@@ -8,7 +8,6 @@
 
     <form method="POST">
 
-        <!-- 1. Odabir frizera -->
         <div class="mb-4">
             <label class="form-label fw-bold">Odaberite frizera:</label>
 
@@ -29,7 +28,6 @@
             </div>
         </div>
 
-        <!-- 2. Glavna usluga -->
         <div class="mb-4">
             <label class="form-label fw-bold" for="service">Odaberite uslugu:</label>
             <select name="service" id="service" class="form-select" required>
@@ -45,13 +43,11 @@
             </div>
         </div>
 
-        <!-- 3. Datum -->
         <div class="mb-4">
             <label class="form-label fw-bold" for="datum">Datum:</label>
             <input type="date" class="form-control" name="datum" id="datum" required min="{{ today }}">
         </div>
 
-        <!-- 4. Termin -->
         <div class="mb-4">
             <label class="form-label fw-bold" for="termin">Termin:</label>
             <select class="form-select" name="termin" id="termin" required>
@@ -62,14 +58,12 @@
             </select>
         </div>
 
-        <!-- Napomena (Markdown) -->
         <div class="mb-3">
             <label for="napomena" class="form-label">Napomena (opcionalno)</label>
             <textarea id="napomena" name="napomena" class="form-control" rows="4"
               placeholder="Ovdje možete napisati napomenu..."></textarea>
         </div>
 
-        <!-- EasyMDE Markdown editor -->
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.css">
         <script src="https://cdn.jsdelivr.net/npm/easymde/dist/easymde.min.js"></script>
 

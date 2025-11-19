@@ -21,7 +21,7 @@ from ..utils import sanitize_markdown
 def admin_required(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
-        # korisnik mora biti prijavljen i imati rolu "admin"
+        # korisnik mora biti prijavljen i imati rolu admin
         if (not current_user.is_authenticated) or (current_user.role != "admin"):
             abort(403)
         return f(*args, **kwargs)
