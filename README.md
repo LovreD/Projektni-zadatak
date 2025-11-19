@@ -26,7 +26,7 @@ Pregled i otkazivanje rezervacija
 
 💈 Rezervacije
 
-Odabir frizera (4 friera)
+Odabir frizera (4 frizera)
 
 Odabir usluge (4 glavne usluge + dodatno pranje kose)
 
