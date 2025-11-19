@@ -12,6 +12,7 @@ import os
 from flask_login import UserMixin
 from flask import current_app
 from dotenv import load_dotenv
+from .utils import sanitize_html, sanitize_markdown
 
 
 
@@ -88,6 +89,9 @@ def create_app():
         response.headers["X-Frame-Options"] = "SAMEORIGIN"
         response.headers["Referrer-Policy"] = "no-referrer-when-downgrade"
         return response
+    
+    app.jinja_env.filters["sanitize"] = sanitize_html
+    app.jinja_env.filters["md"] = sanitize_markdown
 
 
     return app

@@ -14,6 +14,7 @@ from flask_mail import Message
 from .. import mail
 from .forms import ReservationForm
 from functools import wraps
+from ..utils import sanitize_markdown
 
 
 
@@ -73,6 +74,9 @@ def usluge():
         wash = request.form.get("wash") == "on"
         day = request.form.get("datum")
         slot = request.form.get("termin")
+        napomena_raw = request.form.get("napomena") or ""
+        napomena_clean = sanitize_markdown(napomena_raw)
+
 
         if not barber or not selected_service or not day or not slot:
             flash("Molimo odaberite frizera, uslugu, datum i termin.", "warning")
@@ -112,6 +116,7 @@ def usluge():
             "date": day,
             "time": slot,
             "total_price": total_price,
+            "napomena": napomena_clean,
             "created_at": datetime.now()
         })
 
@@ -153,6 +158,7 @@ def moja_sisanja():
                 "date": r["date"],
                 "time": r["time"],
                 "total_price": r.get("total_price", 0),
+                "napomena": r.get("napomena", ""),
             }
         )
 
