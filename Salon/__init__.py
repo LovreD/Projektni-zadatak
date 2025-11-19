@@ -40,13 +40,13 @@ def create_app():
 
     mongo_uri = os.environ.get("MONGO_URI")
 
+    mongo_uri = os.environ.get("MONGODB_URI", "mongodb://localhost:27017/")
     client = MongoClient(mongo_uri)
-    db = client["frizerski_salon"]
 
+    db = client["frizerski_salon"]          
     app.config["DB"] = db
-    app.config["RESERVATIONS"] = db["reservations"]
-
     app.config["USERS"] = db["users"]
+    app.config["RESERVATIONS"] = db["reservations"]
     app.config["FS"] = gridfs.GridFS(db)
 
     login_manager.init_app(app)
